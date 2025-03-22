@@ -1,0 +1,63 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #6e6e6e;
+    font-family: Arial, sans-serif;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    width: min(90vw, 1000px);
+    height: 100vh;
+    justify-content: center;
+    gap: 15px;
+}
+
+/* MAP STYLING */
+#map {
+    width: 100%;
+    height: 60%;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    border: 3px solid #4CAF50;
+}
+
+/* GALLERY STYLING */
+#gallery {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    background: #ffffff;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    border: 3px solid #4CAF50;
+    height: 150px;
+    scroll-snap-type: x mandatory;
+}
+
+.image-card {
+    flex: 0 0 auto;
+    width: 120px;
+    cursor: pointer;
+    border-radius: 8px;
+    overflow: hidden;
+    scroll-snap-align: start;
+    transition: transform 0.2s ease-in-out;
+}
+
+.image-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.image-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
