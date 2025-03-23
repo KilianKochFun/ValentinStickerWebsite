@@ -70,6 +70,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 15px;
+  width: 100%;
 }
 
 /* SEARCH BAR */
@@ -100,6 +101,9 @@ body {
   height: 100%;
   align-content: flex-start;
   flex-wrap: wrap;
+  width: 100%;
+  min-height: 100px;
+  box-sizing: border-box;
 }
 
 .image-card {
@@ -224,9 +228,7 @@ body {
     flex-direction: column;
   }
   #gallery {
-    max-height: calc(
-      70vh - 60px
-    ); /* Subtract some space for the search bar, etc. */
+    width: 100%;
   }
 }
 
