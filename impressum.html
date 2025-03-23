@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Impressum – Valentinsticker.de</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 20px;
+        background-color: #f9f9f9;
+        color: #333;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      h1,
+      h2 {
+        color: #4caf50;
+      }
+      a {
+        color: #4caf50;
+      }
+      hr {
+        margin: 20px 0;
+      }
+      /* HEADER */
+      .header {
+        background-color: #4caf50;
+        color: #fff;
+        padding: 10px;
+        text-align: center;
+        margin-bottom: 20px;
+        border-radius: 8px;
+      }
+      .back-btn {
+        text-decoration: none;
+        color: #fff;
+        font-weight: bold;
+        padding: 6px 12px;
+        border: 2px solid #fff;
+        border-radius: 5px;
+        display: inline-block;
+        transition: background 0.3s ease-in-out;
+      }
+      .back-btn:hover {
+        background-color: #fff;
+        color: #4caf50;
+      }
+
+      /* FOOTER */
+      .footer {
+        background-color: #4caf50;
+        color: #fff;
+        text-align: center;
+        padding: 10px;
+        margin-top: 20px;
+        border-radius: 8px;
+      }
+      .footer a {
+        color: #fff;
+        text-decoration: none;
+        margin: 0 10px;
+      }
+      .footer a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <a href="index" class="back-btn">⬅️ Zurück zur Seite</a>
+    </header>
+    <div class="container">
+      <h1>Impressum</h1>
+      <p><strong>Angaben gemäß § 5 TMG (Telemediengesetz):</strong></p>
+      <p>
+        Kilian Koch<br />
+        Königstraße 4<br />
+        52064 Aachen<br />
+        Deutschland
+      </p>
+      <p>
+        <strong>E-Mail:</strong>
+        <a href="mailto:kilian.koch2000@outlook.de"
+          >kilian.koch2000@outlook.de</a
+        >
+      </p>
+      <p>
+        <strong>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV:</strong
+        ><br />
+        Kilian Koch (Adresse wie oben)
+      </p>
+      <hr />
+      <h2>Hinweis</h2>
+      <p>
+        Dies ist eine privat betriebene Website ohne kommerzielle Interessen.
+        Trotz sorgfältiger inhaltlicher Erstellung übernehme ich keine Haftung
+        für externe Links.
+      </p>
+      <h2>Hosting & Technische Umsetzung</h2>
+      <p>
+        Diese Website wird über <strong>GitHub Pages</strong> gehostet. Als
+        Hosting-Provider dient GitHub, Inc. (Adresse: 88 Colin P Kelly Jr. St,
+        San Francisco, CA 94107, USA). Es erfolgt keine aktive Datenerhebung
+        über Kontaktformulare, Newsletter oder Analyse-Tools.
+      </p>
+      <p>
+        Die interaktive Karte wird automatisch geladen – ohne separate
+        Einwilligung – mittels der JavaScript-Bibliothek
+        <strong>Leaflet</strong> in Verbindung mit <strong>CARTO</strong> als
+        Kartenanbieter. Die Kartenkacheln werden über den folgenden Code
+        eingebunden:
+      </p>
+      <pre><code>L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);</code></pre>
+      <p>
+        Diese technische Umsetzung dient der Darstellung der Karte und erfolgt
+        aus rein funktionalen Gründen.
+      </p>
+      <hr />
+      <p>
+        Quelle/Referenzen: e-recht24, IT-Recht Kanzlei, Datenschutz-Generator.
+      </p>
+    </div>
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a>
+    </footer>
+  </body>
+</html>

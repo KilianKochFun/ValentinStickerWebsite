@@ -1,25 +1,62 @@
 <!DOCTYPE html>
 <html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Interactive Map Gallery</title>
-
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Banner with Valentinsticker Logo/Title -->
+    <header class="banner">
+      <div class="banner-content">
+        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <h1>Valentinsticker.de</h1>
+        <button id="toggleViewBtn">📷 Nur Galerie anzeigen</button>
+      </div>
+    </header>
 
     <div class="container">
-        <div id="map"></div>
+      <!-- Map -->
+      <div id="map"></div>
 
-        <div id="gallery">
-            <!-- Bilder kommen dynamisch via JS -->
+      <!-- Right Column (Search + Gallery) -->
+      <div class="right-column">
+        <!-- Search Bar -->
+        <div class="search-bar">
+          <input type="text" id="searchInput" placeholder="Suche nach Titel..." />
         </div>
+
+        <!-- Vertical Gallery -->
+        <div id="gallery">
+          <p>Keine Sticker wurden bis jetzt gefunden!</p>
+        </div>
+      </div>
     </div>
 
+    <!-- Fullscreen Modal -->
+    <div id="fullscreenModal" class="modal">
+      <div class="modal-content">
+        <img id="modalImage" src="" alt="" />
+        <h2 id="modalTitle"></h2>
+        <p id="modalDescription"></p>
+        <button id="closeModal" class="modal-close-btn">
+          Fenster schließen
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer with Impressum & Datenschutz -->
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a>
+    </footer>
+
+    <!-- Leaflet JS + Own Script -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="locations.js"></script>
     <script src="script.js"></script>
-</body>
+  </body>
 </html>

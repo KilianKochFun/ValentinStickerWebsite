@@ -1,63 +1,242 @@
-html, body {
-    height: 100%;
-    margin: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #6e6e6e;
-    font-family: Arial, sans-serif;
+/* GLOBAL RESET / BASE */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: #6e6e6e;
+  height: 100%;
 }
 
+/* BANNER */
+.banner {
+  background: #ffffff;
+  border-bottom: 3px solid #4caf50;
+  padding: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  height: 75px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+.banner-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+.banner-content img {
+  height: 50px;
+}
+.banner-content h1 {
+  margin: 0;
+}
+#toggleViewBtn {
+  margin-left: auto;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #4caf50;
+  color: #fff;
+}
+
+/* CONTAINER */
 .container {
-    display: flex;
-    flex-direction: column;
-    width: min(90vw, 1000px);
-    height: 100vh;
-    justify-content: center;
-    gap: 15px;
+  display: flex;
+  flex-direction: column; /* Default: column layout (mobile) */
+  margin: 10px auto;
+  gap: 15px;
+  min-height: calc(100vh - 117px);
+  box-sizing: border-box;
+  padding: 25px;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+  max-width: 1500px;
 }
 
-/* MAP STYLING */
+/* MAP */
 #map {
-    width: 100%;
-    height: 60%;
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    border: 3px solid #4CAF50;
+  width: 100%;
+  height: 50vh; /* On mobile, just 50vh tall */
+  border: 3px solid #4caf50;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
-/* GALLERY STYLING */
+/* RIGHT COLUMN (search + gallery) */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* SEARCH BAR */
+.search-bar {
+  display: flex;
+  justify-content: center;
+}
+#searchInput {
+  width: 100%;
+  max-width: 400px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 2px solid #4caf50;
+}
+
+/* GALLERY */
 #gallery {
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    background: #ffffff;
-    padding: 10px;
-    border-radius: 12px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    border: 3px solid #4CAF50;
-    height: 150px;
-    scroll-snap-type: x mandatory;
+  display: flex;
+  position: relative;
+  flex-direction: row; /* Vertical stacking */
+  gap: 10px;
+  overflow-y: auto; /* Vertical scroll */
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  border: 3px solid #4caf50;
+  height: 100%;
+  align-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .image-card {
-    flex: 0 0 auto;
-    width: 120px;
-    cursor: pointer;
-    border-radius: 8px;
-    overflow: hidden;
-    scroll-snap-align: start;
-    transition: transform 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease-in-out;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+  max-width: 200px; /* Control overall card width */
+  margin: 0 auto; /* Center the card horizontally */
+  height: 150px;
 }
-
 .image-card:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: scale(1.02);
 }
-
 .image-card img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  height: 90%;
+}
+.image-title {
+  margin: 5px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 0.9rem;
 }
 
+#gallery > p {
+  position: absolute;
+  transform: translate(-50%,-50%);
+  left: 50%;
+  top: 50%;
+  width: 80%;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  font-weight: bold;
+  font-size: 1.3em;
+  color: #7d7d7d;
+}
+
+
+/* FULLSCREEN MODAL */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.8);
+}
+.modal-content {
+  position: absolute;
+  padding: 20px;
+  max-width: min(calc(100vw - 40px), 800px);
+  background: #fff;
+  border-radius: 10px;
+  text-align: center;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  top: 50%;
+  left: 50%;
+}
+.modal-content img {
+  max-height: 50vh;
+  border-radius: 8px;
+  max-width: min(calc(90vw - 40px), 760px);
+}
+.modal-close-btn {
+  background-color: #4caf50;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 15px;
+  width: 100%;
+  font-weight: bold;
+}
+.modal-close-btn:hover {
+  background-color: #45a049;
+}
+
+/* FOOTER */
+.footer {
+  text-align: center;
+  padding: 10px;
+  background: #ffffff;
+  border-top: 3px solid #4caf50;
+  box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+}
+.footer a {
+  text-decoration: none;
+  color: #4caf50;
+}
+
+/* RESPONSIVE (Desktop / Wider Screens) 
+     -> Two columns: Map on the left, Gallery on the right
+  */
+@media (min-width: 900px) {
+  .container {
+    flex-direction: row;
+  }
+  #map {
+    width: 50%;
+    height: 70vh; /* Taller map on large screens */
+  }
+  .right-column {
+    width: 50%;
+    height: 70vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #gallery {
+    max-height: calc(
+      70vh - 60px
+    ); /* Subtract some space for the search bar, etc. */
+  }
+}
+
+/* HIDE MAP WHEN "SHOW ONLY PHOTOS" IS ACTIVE */
+.hide-map #map {
+  display: none;
+}
+.hide-map .right-column {
+  width: 100%; /* Take full width if map is hidden */
+}
+.hide-map #gallery {
+  max-height: 70vh; /* Expand if map is hidden */
+}
