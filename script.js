@@ -6,6 +6,17 @@ L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
   maxZoom: 19,
 }).addTo(map);
 
+// Get unique authors from 'locations'
+const uniqueAuthors = new Set(locations.map((loc) => loc.finder || "Unknown"));
+// Insert as <option>
+const authorSelect = document.getElementById("authorSelect");
+uniqueAuthors.forEach((author) => {
+  const option = document.createElement("option");
+  option.value = author;
+  option.textContent = author;
+  authorSelect.appendChild(option);
+});
+
 // DOM Elements
 const gallery = document.getElementById("gallery");
 const searchInput = document.getElementById("searchInput");
@@ -18,7 +29,7 @@ const modalDescription = document.getElementById("modalDescription");
 
 let mapHidden = false; // Track map visibility
 
-if(locations.length != 0)  {
+if (locations.length != 0) {
   gallery.innerHTML = "";
 }
 // Create markers + gallery
@@ -29,14 +40,21 @@ locations.forEach((loc, index) => {
   // --- Popup content ---
   const popupDiv = document.createElement("div");
   popupDiv.innerHTML = `
-      <div style="text-align:center;">
-        <img src="${loc.image}" alt="${loc.title}"
-             style="max-width: 200px; width: 100%; border-radius: 8px; cursor: pointer;"
-             id="popupImg${index}">
-        <p style="text-align: left; font-size: 1.2em;"><strong>${loc.title}</strong></p>
-        <p style="text-align: left">${loc.description}</p>
-      </div>
-    `;
+  <div style="text-align:center;">
+    <img src="${loc.image}" alt="${loc.title}"
+         style="width: 200px; height: 200px; object-fit: cover;border-radius: 8px; cursor: pointer;"
+         id="popupImg${index}">
+    <p style="text-align: left; font-size: 1.2em;"><strong>${
+      loc.title
+    }</strong></p>
+    <p style="text-align: left">${loc.description}</p>
+    <p style="text-align: left; font-size: 0.9em; color: #555;">
+      Gefunden von <strong>${
+        loc.finder
+      }</strong> am <em>${loc.time.toLocaleDateString("de-DE")}</em>
+    </p>
+  </div>
+`;
 
   // Fullscreen Button for Popup
   const fullscreenBtn = document.createElement("button");
@@ -93,9 +111,12 @@ locations.forEach((loc, index) => {
   const imageCard = document.createElement("div");
   imageCard.className = "image-card";
   imageCard.innerHTML = `
-      <img src="${loc.image}" alt="${loc.title}">
-      <p class="image-title">${loc.title}</p>
-    `;
+  <img src="${loc.image}" alt="${loc.title}">
+  <p class="image-title">${loc.title}</p>
+  <p class="finder-info">Gefunden von <strong>${
+    loc.finder
+  }</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
+`;
 
   // Clicking a gallery card
   imageCard.onclick = () => {
@@ -116,6 +137,10 @@ function openFullscreen(loc) {
   modalImage.src = loc.image;
   modalTitle.textContent = loc.title;
   modalDescription.textContent = loc.description;
+  const modalMeta = document.getElementById("modalMeta");
+  modalMeta.innerHTML = `Gefunden von <strong>${
+    loc.finder
+  }</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}`;
 }
 
 // Schließen per Button
@@ -179,22 +204,23 @@ function fuzzyMatch(input, target) {
   return levenshtein(normalizedInput, normalizedTarget) <= 2;
 }
 
-// Suchfunktion
-searchInput.addEventListener("input", () => {
-  const filter = searchInput.value.trim().toLowerCase();
+function filterGallery() {
+  const filterText = searchInput.value.trim().toLowerCase();
+  const selectedAuthor = authorSelect.value; // "" means all
+
   const cards = gallery.querySelectorAll(".image-card");
-
   locations.forEach((loc, i) => {
-    const combinedText = normalizeText(loc.title); // Nutzt die Normalisierung
     const card = cards[i];
+    const matchesTitle = fuzzyMatch(filterText, normalizeText(loc.title));
+    const matchesAuthor = !selectedAuthor || loc.finder === selectedAuthor;
 
-    if (fuzzyMatch(filter, combinedText)) {
-      card.style.display = "flex"; // Zeigen
-    } else {
-      card.style.display = "none"; // Verstecken
-    }
+    card.style.display = matchesTitle && matchesAuthor ? "flex" : "none";
   });
-});
+}
+
+// Suchfunktion
+searchInput.addEventListener("input", filterGallery);
+authorSelect.addEventListener("change", filterGallery);
 
 // Ansicht umschalten: Galerie anzeigen / Karte anzeigen
 toggleViewBtn.addEventListener("click", () => {
@@ -207,3 +233,42 @@ toggleViewBtn.addEventListener("click", () => {
     toggleViewBtn.textContent = "📷 Nur Galerie anzeigen";
   }
 });
+
+// 2) Build the leaderboard from the 'locations' array
+const leaderboardData = {};
+
+locations.forEach((loc) => {
+  const author = loc.finder || "Unknown";
+  leaderboardData[author] = leaderboardData[author]
+    ? leaderboardData[author] + 1
+    : 1;
+});
+
+// 3) Render the leaderboard
+function updateLeaderboard() {
+  const leaderboardList = document.getElementById("leaderboardList");
+  if (!leaderboardList) return;
+  leaderboardList.innerHTML = "";
+
+  const sorted = Object.entries(leaderboardData).sort((a, b) => b[1] - a[1]);
+
+  sorted.forEach(([author, count], index) => {
+    const li = document.createElement("li");
+    const medal =
+      index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "🏅";
+
+    // Ganze <li> ist klickbar
+    li.innerHTML = `
+  <span class="medal">${medal}</span>
+  <span class="leaderboard-author">${author}</span>
+  <span class="count">${count} Sticker</span>
+`;
+    li.addEventListener("click", () => {
+      authorSelect.value = author;
+      filterGallery();
+    });
+    leaderboardList.appendChild(li);
+  });
+}
+
+updateLeaderboard();

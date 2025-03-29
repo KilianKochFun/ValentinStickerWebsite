@@ -232,6 +232,13 @@ body {
   }
 }
 
+.modal-meta {
+  font-size: 0.9rem;
+  color: #555;
+  margin-top: 8px;
+}
+
+
 /* HIDE MAP WHEN "SHOW ONLY PHOTOS" IS ACTIVE */
 .hide-map #map {
   display: none;
@@ -241,4 +248,126 @@ body {
 }
 .hide-map #gallery {
   max-height: 70vh; /* Expand if map is hidden */
+}
+
+/* LEADERBOARD */
+/* LEADERBOARD */
+.leaderboard-container {
+  background-color: #ffffff;
+  width: 90%;
+  border: 3px solid #4caf50;
+  border-radius: 12px;
+  padding: 15px 20px;
+  box-sizing: border-box;
+  margin: auto;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.leaderboard-container h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.3rem;
+  color: #4caf50;
+  text-align: center;
+}
+
+.leaderboard-container ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+
+.leaderboard-container li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 1rem;
+  transition: background-color 0.2s, color 0.2s;
+  cursor: pointer;
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+.leaderboard-container li:hover {
+  background-color: #dbdbdb; /* leichtes Grau für Hover */
+}
+
+.leaderboard-container li:active {
+  background-color: #bbbbbb; /* etwas dunkleres Grau beim Klicken */
+}
+
+
+.leaderboard-container .medal {
+  margin-right: 10px;
+}
+
+.leaderboard-container .leaderboard-author,
+.leaderboard-container .count {
+  transition: color 0.2s;
+}
+
+.leaderboard-container .leaderboard-author {
+  flex-grow: 1;
+  font-weight: bold;
+  color: #333;
+  text-align: left;
+}
+
+.leaderboard-container .count {
+  color: #4caf50;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* SELECT + SUCHE */
+.search-and-filter {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+#authorSelect {
+  min-width: 150px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 2px solid #4caf50;
+  background-color: #ffffff;
+  font-size: 1rem;
+  color: #333;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: border 0.2s;
+}
+
+#authorSelect:hover,
+#authorSelect:focus {
+  border-color: #388e3c;
+  outline: none;
+}
+
+
+/* Show author & time on the card */
+.image-card .finder-info {
+  font-size: 0.8rem;
+  text-align: center;
+  color: #555;
+  margin: 0px 5px 5px 5px;  
+}
+
+.disclaimer-box {
+  width: 90%;
+  margin: 10px auto 20px auto;
+  background-color: #fff9c4;
+  border: 2px solid #fbc02d;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  color: #5d4037;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+.disclaimer-box strong {
+  color: #000;
 }

@@ -24,9 +24,18 @@
 
       <!-- Right Column (Search + Gallery) -->
       <div class="right-column">
-        <!-- Search Bar -->
-        <div class="search-bar">
-          <input type="text" id="searchInput" placeholder="Suche nach Titel..." />
+        <!-- Search + Author Filter -->
+        <div class="search-and-filter">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Suche nach Titel..."
+          />
+
+          <select id="authorSelect">
+            <option value="">Alle Autoren</option>
+            <!-- Options will be dynamically generated if you prefer -->
+          </select>
         </div>
 
         <!-- Vertical Gallery -->
@@ -36,12 +45,28 @@
       </div>
     </div>
 
+    <!-- Leaderboard -->
+    <div id="leaderboard" class="leaderboard-container">
+      <h2>🏆 Sticker-Rangliste</h2>
+      <ul id="leaderboardList"></ul>
+    </div>
+
+    <!-- Disclaimer Box -->
+    <div class="disclaimer-box">
+      <p>
+        📌 <strong>Hinweis:</strong> Wir dokumentieren lediglich gefundene
+        Sticker. Wir distanzieren uns ausdrücklich vom Anbringen der Sticker und
+        übernehmen keine Verantwortung für deren Platzierung.
+      </p>
+    </div>
+
     <!-- Fullscreen Modal -->
     <div id="fullscreenModal" class="modal">
       <div class="modal-content">
         <img id="modalImage" src="" alt="" />
         <h2 id="modalTitle"></h2>
         <p id="modalDescription"></p>
+        <p id="modalMeta" class="modal-meta"></p>
         <button id="closeModal" class="modal-close-btn">
           Fenster schließen
         </button>
