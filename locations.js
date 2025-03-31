@@ -22,5 +22,13 @@ const locations = [
     finder: "Tim",
     title: 'Mathekeller 1',
     description: 'Valentin Nummer 1'
+  },
+  {
+    position: [50.736, 15.739944],
+    image: 'img/StickerFunde/Schneekoppe.webp',
+    time: new Date("03-31-2025 12:30"),
+    finder: "Justus L",
+    title: 'Schneekoppe, höchster Berg Tschechiens',
+    description: 'Valentin am Skifahren'
   }
 ];
