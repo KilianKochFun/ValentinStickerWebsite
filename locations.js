@@ -13,7 +13,7 @@ const locations = [
     time: new Date("03-30-2025 18:16"),
     finder: "Paul",
     title: 'FCK Cat',
-    description: 'Valentin reaction to FCK Cat'
+    description: 'Valentins Reaktion auf FCK Cat'
   },
   {
     position: [50.779833, 6.076139],
