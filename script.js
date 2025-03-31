@@ -44,21 +44,28 @@ locations.forEach((loc, index) => {
     <img src="${loc.image}" alt="${loc.title}"
          style="width: 200px; height: 200px; object-fit: cover;border-radius: 8px; cursor: pointer;"
          id="popupImg${index}">
-    <p style="text-align: left; font-size: 1.2em;"><strong>${
-      loc.title
+    <p style="text-align: left; font-size: 1.2em;"><strong>${loc.title
     }</strong></p>
     <p style="text-align: left">${loc.description}</p>
     <p style="text-align: left; font-size: 0.9em; color: #555;">
-      Gefunden von <strong>${
-        loc.finder
-      }</strong> am <em>${loc.time.toLocaleDateString("de-DE")}</em>
+      Gefunden von <strong>${loc.finder
+    }</strong> am <em>${loc.time.toLocaleDateString("de-DE")}</em>
     </p>
   </div>
+`;
+// Fügt Entfernung im Popup hinzu (in popupDiv)
+const dist = berechneEntfernung(loc.position, [50.7763, 6.0836]);
+const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+
+popupDiv.innerHTML += `
+  <p style="text-align: left; font-size: 0.9em; color: #555;">
+    Entfernung zur Aachener Mitte: <strong>${distText}</strong>
+  </p>
 `;
 
   // Fullscreen Button for Popup
   const fullscreenBtn = document.createElement("button");
-  fullscreenBtn.innerHTML = "🖥️ View Fullscreen";
+  fullscreenBtn.innerHTML = "🖥️ Vollbild anzeigen";
   fullscreenBtn.style.cssText = `
       background-color: #4CAF50;
       color: #fff;
@@ -75,7 +82,7 @@ locations.forEach((loc, index) => {
 
   // Zoom Button
   const zoomButton = document.createElement("button");
-  zoomButton.innerHTML = "🔍 Zoom in";
+  zoomButton.innerHTML = "🔍 Hineinzoomen";
   zoomButton.style.cssText = `
       background-color: #4CAF50;
       color: #fff;
@@ -113,9 +120,8 @@ locations.forEach((loc, index) => {
   imageCard.innerHTML = `
   <img src="${loc.image}" alt="${loc.title}">
   <p class="image-title">${loc.title}</p>
-  <p class="finder-info">Gefunden von <strong>${
-    loc.finder
-  }</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
+  <p class="finder-info">Gefunden von <strong>${loc.finder
+    }</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
 `;
 
   // Clicking a gallery card
@@ -131,16 +137,19 @@ locations.forEach((loc, index) => {
   gallery.appendChild(imageCard);
 });
 
-// Fullscreen modal open/close
+// Fügt Entfernung im Modal hinzu (openFullscreen)
 function openFullscreen(loc) {
   modal.style.display = "block";
   modalImage.src = loc.image;
   modalTitle.textContent = loc.title;
   modalDescription.textContent = loc.description;
+
   const modalMeta = document.getElementById("modalMeta");
-  modalMeta.innerHTML = `Gefunden von <strong>${
-    loc.finder
-  }</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}`;
+  const dist = berechneEntfernung(loc.position, [50.7763, 6.0836]);
+  const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+
+  modalMeta.innerHTML = `Gefunden von <strong>${loc.finder}</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}<br>
+  Entfernung zur Aachener Mitte: <strong>${distText}</strong>`;
 }
 
 // Schließen per Button
@@ -244,31 +253,64 @@ locations.forEach((loc) => {
     : 1;
 });
 
+function berechneEntfernung(coord1, coord2) {
+  const [lat1, lon1] = coord1;
+  const [lat2, lon2] = coord2;
+  const R = 6371.071;
+  const rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad;
+  const dLon = (lon2 - lon1) * rad;
+  const lat1Rad = lat1 * rad;
+  const lat2Rad = lat2 * rad;
+
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+            Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.asin(Math.sqrt(a));
+  return R * c;
+}
+
 // 3) Render the leaderboard
 function updateLeaderboard() {
   const leaderboardList = document.getElementById("leaderboardList");
   if (!leaderboardList) return;
   leaderboardList.innerHTML = "";
 
-  const sorted = Object.entries(leaderboardData).sort((a, b) => b[1] - a[1]);
+  const sorted = Object.entries(leaderboardData)
+    .sort((a, b) => b[1] - a[1]);
+
+  let actualRank = 1;
+  let previousCount = null;
+  let displayRank = 1;
 
   sorted.forEach(([author, count], index) => {
+    if (count !== previousCount) {
+      displayRank = actualRank;
+    }
+
     const li = document.createElement("li");
     const medal =
-      index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "🏅";
+      displayRank === 1 ? "🥇" :
+      displayRank === 2 ? "🥈" :
+      displayRank === 3 ? "🥉" : "";
 
-    // Ganze <li> ist klickbar
     li.innerHTML = `
-  <span class="medal">${medal}</span>
-  <span class="leaderboard-author">${author}</span>
-  <span class="count">${count} Sticker</span>
-`;
+      <span class="medal">${medal}</span>
+      <span class="leaderboard-author">${author}</span>
+      <span class="count">${count} Sticker</span>
+    `;
+
     li.addEventListener("click", () => {
       authorSelect.value = author;
       filterGallery();
     });
+
     leaderboardList.appendChild(li);
+
+    previousCount = count;
+    actualRank++;
   });
 }
+
 
 updateLeaderboard();
