@@ -30,5 +30,13 @@ const locations = [
     finder: "Justus L",
     title: 'Schneekoppe, höchster Berg Tschechiens',
     description: 'Valentin am Skifahren'
-  }
+  },
+  {
+    position: [50.7723172, 6.0709965],
+    image: 'img/StickerFunde/westpark.webp',
+    time: new Date("04-10-2025 20:11"),
+    finder: "Tim",
+    title: 'Im Westen was Neues',
+    description: 'Valentin macht den Westen unsicher im Westpark.'
+  }  
 ];
