@@ -279,37 +279,36 @@ function updateLeaderboard() {
   const sorted = Object.entries(leaderboardData)
     .sort((a, b) => b[1] - a[1]);
 
-  let actualRank = 1;
-  let previousCount = null;
-  let displayRank = 1;
-
-  sorted.forEach(([author, count], index) => {
-    if (count !== previousCount) {
-      displayRank = actualRank;
-    }
-
-    const li = document.createElement("li");
-    const medal =
-      displayRank === 1 ? "🥇" :
-      displayRank === 2 ? "🥈" :
-      displayRank === 3 ? "🥉" : "";
-
-    li.innerHTML = `
-      <span class="medal">${medal}</span>
-      <span class="leaderboard-author">${author}</span>
-      <span class="count">${count} Sticker</span>
-    `;
-
-    li.addEventListener("click", () => {
-      authorSelect.value = author;
-      filterGallery();
+    let displayRank = 1;
+    let previousCount = null;
+    
+    sorted.forEach(([author, count], index) => {
+      if (count !== previousCount && index !== 0) {
+        displayRank++;
+      }
+    
+      const li = document.createElement("li");
+      const medal =
+        displayRank === 1 ? "🥇" :
+        displayRank === 2 ? "🥈" :
+        displayRank === 3 ? "🥉" : "";
+    
+      li.innerHTML = `
+        <span class="medal">${medal}</span>
+        <span class="leaderboard-author">${author}</span>
+        <span class="count">${count} Sticker</span>
+      `;
+    
+      li.addEventListener("click", () => {
+        authorSelect.value = author;
+        filterGallery();
+      });
+    
+      leaderboardList.appendChild(li);
+    
+      previousCount = count;
     });
-
-    leaderboardList.appendChild(li);
-
-    previousCount = count;
-    actualRank++;
-  });
+    
 }
 
 

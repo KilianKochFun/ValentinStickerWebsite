@@ -36,7 +36,16 @@ const locations = [
     image: 'img/StickerFunde/westpark.webp',
     time: new Date("04-10-2025 20:11"),
     finder: "Tim",
-    title: 'Im Westen was Neues',
-    description: 'Valentin macht den Westen unsicher im Westpark.'
-  }  
+    title: 'Im Westpark',
+    description: 'Valentin macht den Westen unsicher.'
+  },
+  {
+    position: [47.5060433, 9.7247921],
+    image: 'img/StickerFunde/bodensee.webp',
+    time: new Date("04-05-2025 19:36"),
+    finder: "Paul",
+    title: 'Am Bodensee',
+    description: 'Valentin ist am Boden (see)'
+  }
+  
 ];
