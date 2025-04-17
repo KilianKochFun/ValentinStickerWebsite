@@ -1,4 +1,11 @@
-// Initialize map
+(function() {
+  'use strict';
+  // Constants
+  const AACHEN_CENTER = [50.7763, 6.0836];
+  // For restoring focus after modal
+  let lastFocusedElement = null;
+
+  // Initialize map
 const map = L.map("map").setView([51.1657, 10.4515], 6);
 L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
   attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -36,6 +43,8 @@ if (locations.length != 0) {
 locations.forEach((loc, index) => {
   // --- Leaflet Marker ---
   const marker = L.marker(loc.position).addTo(map);
+  // Store marker on location for distance leaderboard navigation
+  loc.marker = marker;
 
   // --- Popup content ---
   const popupDiv = document.createElement("div");
@@ -54,7 +63,7 @@ locations.forEach((loc, index) => {
   </div>
 `;
 // Fügt Entfernung im Popup hinzu (in popupDiv)
-const dist = berechneEntfernung(loc.position, [50.7763, 6.0836]);
+const dist = calculateDistance(loc.position, AACHEN_CENTER);
 const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
 
 popupDiv.innerHTML += `
@@ -117,6 +126,8 @@ popupDiv.innerHTML += `
   // --- Gallery Card ---
   const imageCard = document.createElement("div");
   imageCard.className = "image-card";
+  // Tag card with index for robust filtering
+  imageCard.dataset.index = index;
   imageCard.innerHTML = `
   <img src="${loc.image}" alt="${loc.title}">
   <p class="image-title">${loc.title}</p>
@@ -139,17 +150,22 @@ popupDiv.innerHTML += `
 
 // Fügt Entfernung im Modal hinzu (openFullscreen)
 function openFullscreen(loc) {
+  // Save focus and show modal
+  lastFocusedElement = document.activeElement;
   modal.style.display = "block";
   modalImage.src = loc.image;
+  modalImage.alt = loc.title;
   modalTitle.textContent = loc.title;
   modalDescription.textContent = loc.description;
 
   const modalMeta = document.getElementById("modalMeta");
-  const dist = berechneEntfernung(loc.position, [50.7763, 6.0836]);
+  const dist = calculateDistance(loc.position, AACHEN_CENTER);
   const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
 
   modalMeta.innerHTML = `Gefunden von <strong>${loc.finder}</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}<br>
   Entfernung zur Aachener Mitte: <strong>${distText}</strong>`;
+  // Focus close button for accessibility
+  closeModal.focus();
 }
 
 // Schließen per Button
@@ -157,14 +173,23 @@ closeModal.onclick = closeFullscreen;
 
 function closeFullscreen() {
   modal.style.display = "none";
+  // Restore focus
+  if (lastFocusedElement) lastFocusedElement.focus();
 }
 
 // Schließen durch Klick außerhalb
+// Close by clicking outside modal
 window.onclick = (event) => {
   if (event.target === modal) {
     closeFullscreen();
   }
 };
+// Close modal with ESC key
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && modal.style.display === 'block') {
+    closeFullscreen();
+  }
+});
 
 // Funktion zur Normalisierung von Text (ä -> ae, ö -> oe, ß -> ss etc.)
 function normalizeText(text) {
@@ -214,17 +239,34 @@ function fuzzyMatch(input, target) {
 }
 
 function filterGallery() {
-  const filterText = searchInput.value.trim().toLowerCase();
+  const filterText = searchInput.value.trim();
   const selectedAuthor = authorSelect.value; // "" means all
 
   const cards = gallery.querySelectorAll(".image-card");
-  locations.forEach((loc, i) => {
-    const card = cards[i];
-    const matchesTitle = fuzzyMatch(filterText, normalizeText(loc.title));
-    const matchesAuthor = !selectedAuthor || loc.finder === selectedAuthor;
+  let anyVisible = false;
 
-    card.style.display = matchesTitle && matchesAuthor ? "flex" : "none";
+  cards.forEach((card) => {
+    const idx = card.dataset.index;
+    const loc = locations[idx];
+    const matchesTitle = fuzzyMatch(filterText, loc.title);
+    const matchesAuthor = !selectedAuthor || loc.finder === selectedAuthor;
+    const show = matchesTitle && matchesAuthor;
+    card.style.display = show ? "flex" : "none";
+    if (show) anyVisible = true;
   });
+
+  // Handle no-results message
+  const existing = gallery.querySelector(".no-results");
+  if (!anyVisible) {
+    if (!existing) {
+      const msg = document.createElement("p");
+      msg.className = "no-results";
+      msg.textContent = "Keine Treffer gefunden.";
+      gallery.appendChild(msg);
+    }
+  } else if (existing) {
+    existing.remove();
+  }
 }
 
 // Suchfunktion
@@ -240,6 +282,8 @@ toggleViewBtn.addEventListener("click", () => {
   } else {
     document.body.classList.remove("hide-map");
     toggleViewBtn.textContent = "📷 Nur Galerie anzeigen";
+    // Ensure map tiles render correctly after showing map
+    map.invalidateSize();
   }
 });
 
@@ -253,7 +297,8 @@ locations.forEach((loc) => {
     : 1;
 });
 
-function berechneEntfernung(coord1, coord2) {
+// Calculate distance between two coordinates (Haversine formula)
+function calculateDistance(coord1, coord2) {
   const [lat1, lon1] = coord1;
   const [lat2, lon2] = coord2;
   const R = 6371.071;
@@ -313,3 +358,44 @@ function updateLeaderboard() {
 
 
 updateLeaderboard();
+
+// 4) Build the distance leaderboard for top 3 furthest stickers
+function updateDistanceLeaderboard() {
+  const list = document.getElementById("distanceLeaderboardList");
+  if (!list) return;
+  list.innerHTML = "";
+
+  // Compute distances for each location relative to Aachen center
+  const distArray = locations.map((loc) => ({ loc, dist: calculateDistance(loc.position, AACHEN_CENTER) }));
+  // Sort descending by distance
+  distArray.sort((a, b) => b.dist - a.dist);
+  // Take top 3
+  const top3 = distArray.slice(0, 3);
+
+  top3.forEach((item, index) => {
+    const { loc, dist } = item;
+    const li = document.createElement("li");
+    // Medal icon for rank
+    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+    // Format distance text
+    const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+    // Build list item: medal, sticker title and author, distance
+    li.innerHTML = `
+      <span class="medal">${medal}</span>
+      <span class="leaderboard-author">${loc.title} (von ${loc.finder || "Unknown"})</span>
+      <span class="count">${distText}</span>
+    `;
+    // Navigate map to sticker on click
+    li.addEventListener("click", () => {
+      map.setView(loc.position, 17);
+      if (loc.marker) loc.marker.openPopup();
+    });
+    list.appendChild(li);
+  });
+}
+
+// Initialize distance leaderboard
+updateDistanceLeaderboard();
+
+// End of module wrapper
+})();

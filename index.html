@@ -3,9 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- SEO & Theme -->
+    <meta name="description" content="Interaktive Karte und Galerie aller gefundenen Valentin-Sticker mit Rangerlisten der aktivsten Sticker-Finder und Top-3 weitesten Sticker." />
+    <meta name="theme-color" content="#4caf50" />
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
     <title>Valentin Sticker</title>
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -45,10 +49,16 @@
       </div>
     </div>
 
-    <!-- Leaderboard -->
+    <!-- Leaderboard für Sticker-Finder -->
     <div id="leaderboard" class="leaderboard-container">
       <h2>🏆 Sticker-Rangliste</h2>
       <ul id="leaderboardList"></ul>
+    </div>
+
+    <!-- Leaderboard für Top 3 größte Entfernungen -->
+    <div id="distanceLeaderboard" class="leaderboard-container">
+      <h2>📏 Top 3 Sticker mit größter Entfernung</h2>
+      <ul id="distanceLeaderboardList"></ul>
     </div>
 
     <!-- Disclaimer Box -->
@@ -80,7 +90,7 @@
     </footer>
 
     <!-- Leaflet JS + Own Script -->
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
     <script src="locations.js"></script>
     <script src="script.js"></script>
   </body>
