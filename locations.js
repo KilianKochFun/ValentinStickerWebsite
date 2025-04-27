@@ -57,7 +57,7 @@ const locations = [
     position: [41.907611, 12.457417],
     image: 'img/StickerFunde/Rom.jpeg',
     // Berlin time (CEST)
-    time: new Date("2025-04-05T21:27:00+02:00"),
+    time: new Date("2025-04-27T21:27:00+02:00"),
     finder: "Jan G",
     title: 'Rom',
     description: 'Valentin wird Römer.'
