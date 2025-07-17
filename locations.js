@@ -61,7 +61,13 @@ const locations = [
     finder: "Jan G",
     title: 'Rom',
     description: 'Valentin wird Römer.'
+  },
+  {
+  position: [46,1329830, 7,9831056],
+  image: 'img/StickerFunde/hohsaas,
+  time: new Date("2025-14-04T11:00:00+2:00"),
+  finder: "Matthis",
+  title: "hohsaas"
+  description: "Bissien am Skien"
   }
-  
-  
 ];
