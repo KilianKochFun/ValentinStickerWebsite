@@ -65,7 +65,7 @@ const locations = [
   {
   position: [46.1329830, 7.9831056],
   image: 'img/StickerFunde/IMG-20250717-WA0003.jpg',
-  time: new Date("2025-14-04T11:00:00+2:00"),
+  time: new Date("2025-04-14T11:00:00+2:00"),
   finder: "Matthis",
   title: "hohsaas",
   description: "Bissien am Skien"
