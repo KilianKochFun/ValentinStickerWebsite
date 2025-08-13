@@ -3,7 +3,7 @@ const locations = [
     position: [50.77580555555556, 6.075638888888888],
     image: 'img/StickerFunde/ValentinBäcker.webp',
     // Berlin time (CET)
-    time: new Date("2024-03-23T12:20:00+01:00"),
+    time: new Date("2025-03-23T12:20:00+01:00"),
     finder: "Kilian",
     title: 'Gegenüber Kaussen',
     description: 'Ein Valentin an der Stickerwand Kaussen.'
@@ -76,6 +76,14 @@ const locations = [
     time: new Date("2025-08-12T19:39:00+02:00"),
     finder: "Glol",
     title: "Da geht die Post ab!",
-    description: "Ich ❤️ Valentin. - Gloli"
-    }
+    description: "I ❤️ Valentin. - Gloli"
+    },
+    {
+      position: [52.236361,16.728333],
+      image: 'img/StickerFunde/Stern.jpg',
+      time: new Date("2025-08-03T08:39:00+02:00"),
+      finder: "Glol",
+      title: "Stern unter Będlewo.",
+      description: "Und unten leuchtet Valentin."
+      }
 ];
