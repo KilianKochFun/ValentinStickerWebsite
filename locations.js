@@ -81,7 +81,7 @@ const locations = [
     {
       position: [52.236361,16.728333],
       image: 'img/StickerFunde/Stern.jpg',
-      time: new Date("2025-08-03T08:39:00+02:00"),
+      time: new Date("2024-08-03T08:39:00+02:00"),
       finder: "Glol",
       title: "Stern unter Będlewo.",
       description: "Und unten leuchtet Valentin."
