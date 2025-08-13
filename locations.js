@@ -69,5 +69,13 @@ const locations = [
   finder: "Matthis",
   title: "hohsaas",
   description: "Bissien am Skien"
-  }
+  },
+  {
+    position: [50.779611,6.077222],
+    image: 'img/StickerFunde/DHL.jpg',
+    time: new Date("2025-08-12T19:39:00+02:00"),
+    finder: "Glol",
+    title: "Da geht die Post ab!",
+    description: "Ich ❤️ Valentin. - Gloli"
+    }
 ];
