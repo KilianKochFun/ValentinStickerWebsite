@@ -370,7 +370,7 @@ function updateDistanceLeaderboard() {
   // Sort descending by distance
   distArray.sort((a, b) => b.dist - a.dist);
   // Take top 3
-  const top3 = distArray.slice(0, 5);
+  const top3 = distArray;
 
   top3.forEach((item, index) => {
     const { loc, dist } = item;
