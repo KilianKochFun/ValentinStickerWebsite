@@ -63,27 +63,35 @@ const locations = [
     description: 'Valentin wird Römer.'
   },
   {
-  position: [46.1329830, 7.9831056],
-  image: 'img/StickerFunde/IMG-20250717-WA0003.jpg',
-  time: new Date("2025-04-14T11:00:00+02:00"),
-  finder: "Matthis",
-  title: "hohsaas",
-  description: "Bissien am Skien"
+    position: [46.1329830, 7.9831056],
+    image: 'img/StickerFunde/IMG-20250717-WA0003.jpg',
+    time: new Date("2025-04-14T11:00:00+02:00"),
+    finder: "Matthis",
+    title: "hohsaas",
+    description: "Bissien am Skien"
   },
   {
-    position: [50.779611,6.077222],
+    position: [50.779611, 6.077222],
     image: 'img/StickerFunde/DHL.jpg',
     time: new Date("2025-08-12T19:39:00+02:00"),
     finder: "Glol",
     title: "Da geht die Post ab!",
     description: "I ❤️ Valentin. - Gloli"
-    },
-    {
-      position: [52.236361,16.728333],
-      image: 'img/StickerFunde/Stern.jpg',
-      time: new Date("2024-08-03T08:39:00+02:00"),
-      finder: "Glol",
-      title: "Stern unter Będlewo.",
-      description: "Und unten leuchtet Valentin."
-      }
+  },
+  {
+    position: [52.236361, 16.728333],
+    image: 'img/StickerFunde/Stern.jpg',
+    time: new Date("2024-08-03T08:39:00+02:00"),
+    finder: "Glol",
+    title: "Stern unter Będlewo.",
+    description: "Und unten leuchtet Valentin."
+  },
+  {
+    position: [19.333083, -99.180722],
+    image: 'img/StickerFunde/Mexiko.jpeg',
+    time: new Date("2025-08-13T20:13:00+02:00"),
+    finder: "Valencia Linse",
+    title: "Ai caramba",
+    description: "¡Un Valentin salvaje apareció!"
+  }
 ];

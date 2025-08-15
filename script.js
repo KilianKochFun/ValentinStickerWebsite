@@ -370,13 +370,13 @@ function updateDistanceLeaderboard() {
   // Sort descending by distance
   distArray.sort((a, b) => b.dist - a.dist);
   // Take top 3
-  const top3 = distArray.slice(0, 3);
+  const top3 = distArray.slice(0, 5);
 
   top3.forEach((item, index) => {
     const { loc, dist } = item;
     const li = document.createElement("li");
     // Medal icon for rank
-    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
+    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "🎗";
     // Format distance text
     const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
     // Build list item: medal, sticker title and author, distance
