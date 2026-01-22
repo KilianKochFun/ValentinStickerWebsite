@@ -93,5 +93,13 @@ const locations = [
     finder: "Valencia Linse",
     title: "Ai caramba",
     description: "¡Un Valentin salvaje apareció!"
+  },
+  {
+    position: [35.6003302, 139.7204669],
+    image: 'img/StickerFunde/Japan.jpg',
+    time: new Date("2026-01-20T10:52:00+01:00"),
+    finder: 'Kilian',
+    title: 'Valentinは日本にいる',
+    description: 'その公園で子供たちはびっくりしそうね。草'
   }
 ];
