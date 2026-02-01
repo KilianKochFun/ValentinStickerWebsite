@@ -413,6 +413,14 @@ const settingsBtn = document.getElementById('settingsBtn');
 const settingsPanel = document.getElementById('settingsPanel');
 const toggleCursorBtn = document.getElementById('toggleCursorBtn');
 
+// Mobile menu elements
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+const toggleAnimationBtnMobile = document.getElementById('toggleAnimationBtnMobile');
+const settingsBtnMobile = document.getElementById('settingsBtnMobile');
+const toggleCursorBtnMobile = document.getElementById('toggleCursorBtnMobile');
+const toggleViewBtnMobile = document.getElementById('toggleViewBtnMobile');
+
 // Settings sliders
 const speedSlider = document.getElementById('speedSlider');
 const frequencySlider = document.getElementById('frequencySlider');
@@ -695,6 +703,91 @@ toggleAnimationBtn.addEventListener('click', () => {
 loadSettings();
 if (animationActive) {
   startStickerAnimation();
+}
+
+// HAMBURGER MENU FUNCTIONALITY
+if (hamburgerBtn && mobileMenu) {
+  console.log('Hamburger menu initialized');
+
+  hamburgerBtn.addEventListener('click', (e) => {
+    console.log('Hamburger clicked');
+    e.stopPropagation();
+    const isHidden = mobileMenu.classList.contains('hidden');
+    console.log('Menu is hidden:', isHidden);
+    console.log('Menu classes before:', mobileMenu.className);
+
+    if (isHidden) {
+      mobileMenu.classList.remove('hidden');
+      mobileMenu.classList.add('visible');
+    } else {
+      mobileMenu.classList.add('hidden');
+      mobileMenu.classList.remove('visible');
+    }
+
+    console.log('Menu classes after:', mobileMenu.className);
+    console.log('Menu display style:', window.getComputedStyle(mobileMenu).display);
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.banner') && !mobileMenu.classList.contains('hidden')) {
+      mobileMenu.classList.add('hidden');
+      mobileMenu.classList.remove('visible');
+    }
+  });
+} else {
+  console.warn('Hamburger menu elements not found');
+}
+
+// Mobile button event listeners - sync with desktop buttons
+if (toggleAnimationBtnMobile && toggleAnimationBtn) {
+  toggleAnimationBtnMobile.addEventListener('click', () => {
+    toggleAnimationBtn.click();
+    closeMobileMenu();
+  });
+}
+
+if (settingsBtnMobile && settingsBtn) {
+  settingsBtnMobile.addEventListener('click', () => {
+    settingsBtn.click();
+    closeMobileMenu();
+  });
+}
+
+if (toggleCursorBtnMobile && toggleCursorBtn) {
+  toggleCursorBtnMobile.addEventListener('click', () => {
+    toggleCursorBtn.click();
+    closeMobileMenu();
+  });
+}
+
+if (toggleViewBtnMobile && toggleViewBtn) {
+  toggleViewBtnMobile.addEventListener('click', () => {
+    toggleViewBtn.click();
+    closeMobileMenu();
+  });
+}
+
+// Update mobile button text when desktop buttons change
+function updateMobileButtonText() {
+  toggleAnimationBtnMobile.textContent = toggleAnimationBtn.textContent;
+  toggleViewBtnMobile.textContent = toggleViewBtn.textContent;
+}
+
+// Helper function to close mobile menu
+function closeMobileMenu() {
+  if (mobileMenu) {
+    mobileMenu.classList.add('hidden');
+    mobileMenu.classList.remove('visible');
+  }
+}
+
+// Update mobile buttons initially and when they change
+if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleViewBtnMobile) {
+  updateMobileButtonText();
+  const observer = new MutationObserver(updateMobileButtonText);
+  observer.observe(toggleAnimationBtn, { childList: true, characterData: true, subtree: true });
+  observer.observe(toggleViewBtn, { childList: true, characterData: true, subtree: true });
 }
 
 // End of module wrapper
