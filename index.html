@@ -18,9 +18,47 @@
       <div class="banner-content">
         <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
         <h1>Valentinsticker.de</h1>
+        <button id="toggleAnimationBtn">🎉 Animation an</button>
+        <button id="settingsBtn">⚙️ Einstellungen</button>
+        <button id="toggleCursorBtn">🖱️ Cursor Effekt</button>
         <button id="toggleViewBtn">📷 Nur Galerie anzeigen</button>
       </div>
     </header>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel hidden">
+      <div class="settings-content">
+        <h2>⚙️ Animationseinstellungen</h2>
+        <button class="settings-close">✕</button>
+
+        <div class="setting-group">
+          <label for="speedSlider">Geschwindigkeit der Sticker:</label>
+          <div class="slider-container">
+            <input type="range" id="speedSlider" min="1" max="15" value="5">
+            <span id="speedValue">5</span>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label for="frequencySlider">Häufigkeit (wie oft neue Sticker):</label>
+          <div class="slider-container">
+            <input type="range" id="frequencySlider" min="1" max="100" value="5">
+            <span id="frequencyValue">5</span>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <label for="sizeSlider">Größe der Sticker:</label>
+          <div class="slider-container">
+            <input type="range" id="sizeSlider" min="20" max="200" value="50">
+            <span id="sizeValue">50px</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Falling Stickers Container -->
+    <div id="falling-stickers"></div>
 
     <div class="container">
       <!-- Map -->
@@ -60,6 +98,11 @@
       <ul id="leaderboardList"></ul>
     </div>
 
+    <!-- Kontinente Leaderboard -->
+    <div id="continentsLeaderboard" class="leaderboard-container">
+      <h2>🌍 Kontinente-Übersicht</h2>
+      <ul id="continentsLeaderboardList"></ul>
+    </div>
 
     <!-- Disclaimer Box -->
     <div class="disclaimer-box">

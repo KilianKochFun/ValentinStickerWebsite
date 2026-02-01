@@ -397,5 +397,305 @@ function updateDistanceLeaderboard() {
 // Initialize distance leaderboard
 updateDistanceLeaderboard();
 
+// FALLING STICKERS ANIMATION
+let animationActive = localStorage.getItem('animationActive') !== 'false';
+let stickerSpawnInterval = null;
+
+// Animation settings
+let stickerSpeed = 5; // 1-10, affects fall duration
+let stickerFrequency = 5; // 1-10, affects spawn interval
+let stickerSize = 50; // 20-80 pixels
+let cursorEffectActive = false;
+
+const fallingStickerContainer = document.getElementById('falling-stickers');
+const toggleAnimationBtn = document.getElementById('toggleAnimationBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsPanel = document.getElementById('settingsPanel');
+const toggleCursorBtn = document.getElementById('toggleCursorBtn');
+
+// Settings sliders
+const speedSlider = document.getElementById('speedSlider');
+const frequencySlider = document.getElementById('frequencySlider');
+const sizeSlider = document.getElementById('sizeSlider');
+const speedValue = document.getElementById('speedValue');
+const frequencyValue = document.getElementById('frequencyValue');
+const sizeValue = document.getElementById('sizeValue');
+
+// Settings Panel Functions
+function openSettingsPanel() {
+  settingsPanel.classList.remove('hidden');
+}
+
+function closeSettingsPanel() {
+  settingsPanel.classList.add('hidden');
+}
+
+// Settings panel event listeners
+settingsBtn.addEventListener('click', openSettingsPanel);
+document.querySelector('.settings-close').addEventListener('click', closeSettingsPanel);
+settingsPanel.addEventListener('click', (e) => {
+  if (e.target === settingsPanel) closeSettingsPanel();
+});
+
+// Slider event listeners
+speedSlider.addEventListener('input', (e) => {
+  stickerSpeed = parseInt(e.target.value);
+  speedValue.textContent = stickerSpeed;
+  localStorage.setItem('stickerSpeed', stickerSpeed);
+});
+
+frequencySlider.addEventListener('input', (e) => {
+  stickerFrequency = parseInt(e.target.value);
+  frequencyValue.textContent = stickerFrequency;
+  localStorage.setItem('stickerFrequency', stickerFrequency);
+  // Restart spawn interval if animation is active
+  if (animationActive && stickerSpawnInterval !== null) {
+    stopStickerAnimation();
+    startStickerAnimation();
+  }
+});
+
+sizeSlider.addEventListener('input', (e) => {
+  stickerSize = parseInt(e.target.value);
+  sizeValue.textContent = stickerSize + 'px';
+  localStorage.setItem('stickerSize', stickerSize);
+});
+
+// Load saved settings
+function loadSettings() {
+  stickerSpeed = parseInt(localStorage.getItem('stickerSpeed')) || 5;
+  stickerFrequency = parseInt(localStorage.getItem('stickerFrequency')) || 20;
+  stickerSize = parseInt(localStorage.getItem('stickerSize')) || 50;
+
+  speedSlider.value = stickerSpeed;
+  frequencySlider.value = stickerFrequency;
+  sizeSlider.value = stickerSize;
+  speedValue.textContent = stickerSpeed;
+  frequencyValue.textContent = stickerFrequency;
+  sizeValue.textContent = stickerSize + 'px';
+}
+
+// Update button state based on animationActive
+function updateToggleButtonState() {
+  if (animationActive) {
+    toggleAnimationBtn.textContent = '🎉 Animation an';
+    toggleAnimationBtn.classList.remove('inactive');
+  } else {
+    toggleAnimationBtn.textContent = '🎉 Animation aus';
+    toggleAnimationBtn.classList.add('inactive');
+  }
+}
+
+updateToggleButtonState();
+
+// Spawn a falling sticker
+function spawnFallingSticker() {
+  const sticker = document.createElement('div');
+  sticker.className = 'falling-sticker';
+
+  // Random horizontal position (0% to 100%)
+  const randomX = Math.random() * 100;
+  sticker.style.left = randomX + '%';
+  sticker.style.top = '-100px';
+
+  // Use configured size with slight random variation
+  const sizeVariation = stickerSize * 0.8 + Math.random() * (stickerSize * 0.4);
+  sticker.style.width = sizeVariation + 'px';
+  sticker.style.height = sizeVariation + 'px';
+
+  // Set background image
+  sticker.style.backgroundImage = "url('img/valentinSticker.webp')";
+
+  // Calculate fall duration based on speed setting (1=fast, 10=slow)
+  const baseSpeed = 3 + (10 - stickerSpeed) * 0.7;
+  const fallDuration = baseSpeed + Math.random() * 2;
+
+  // Apply animation
+  sticker.style.animation = `fall ${fallDuration}s linear forwards`;
+
+  fallingStickerContainer.appendChild(sticker);
+
+  // Remove element after animation completes
+  setTimeout(() => {
+    sticker.remove();
+  }, fallDuration * 1000);
+}
+
+// Start spawning stickers
+function startStickerAnimation() {
+  if (stickerSpawnInterval === null) {
+    stickerSpawnInterval = setInterval(() => {
+      if (animationActive) {
+        spawnFallingSticker();
+      }
+    }, (99 - stickerFrequency) * 10); // Base interval adjusted by frequency
+  }
+}
+
+// Stop spawning stickers
+function stopStickerAnimation() {
+  if (stickerSpawnInterval !== null) {
+    clearInterval(stickerSpawnInterval);
+    stickerSpawnInterval = null;
+  }
+  // Clear existing stickers
+  fallingStickerContainer.innerHTML = '';
+}
+
+
+// CURSOR EFFECT - Valentinsticker Cursor Trail
+let cursorListener = null;
+
+function createStickerCursor() {
+  if (!cursorEffectActive) return;
+
+  if (cursorListener) return; // Prevent duplicate listeners
+
+  cursorListener = (e) => {
+    const sticker = document.createElement('img');
+    sticker.src = 'img/valentinSticker.webp';
+    sticker.style.position = 'fixed';
+    sticker.style.left = (e.clientX - 20) + 'px';
+    sticker.style.top = (e.clientY - 20) + 'px';
+    sticker.style.pointerEvents = 'none';
+    sticker.style.zIndex = '9999';
+    sticker.style.width = '40px';
+    sticker.style.height = '40px';
+    sticker.style.animation = 'stickerTrailFade 0.6s ease-out forwards';
+    sticker.style.transform = `rotate(${Math.random() * 360}deg)`;
+    document.body.appendChild(sticker);
+
+    setTimeout(() => sticker.remove(), 600);
+  };
+
+  document.addEventListener('mousemove', cursorListener);
+}
+
+function removeStickerCursor() {
+  if (cursorListener) {
+    document.removeEventListener('mousemove', cursorListener);
+    cursorListener = null;
+  }
+}
+
+// Toggle cursor effect
+toggleCursorBtn.addEventListener('click', () => {
+  cursorEffectActive = !cursorEffectActive;
+  localStorage.setItem('cursorEffectActive', cursorEffectActive);
+
+  if (cursorEffectActive) {
+    toggleCursorBtn.style.opacity = '1';
+    createStickerCursor();
+  } else {
+    toggleCursorBtn.style.opacity = '0.7';
+    removeStickerCursor();
+  }
+});
+
+// Add CSS for sticker trail fade animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes stickerTrailFade {
+    0% {
+      opacity: 1;
+      transform: rotate(0deg) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(360deg) scale(0.5);
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// Load cursor effect state
+const savedCursorEffect = localStorage.getItem('cursorEffectActive') === 'true';
+if (savedCursorEffect) {
+  cursorEffectActive = true;
+  toggleCursorBtn.style.opacity = '1';
+  createStickerCursor();
+} else {
+  toggleCursorBtn.style.opacity = '0.7';
+}
+
+// KONTINENTE LEADERBOARD
+function updateContinentsLeaderboard() {
+  const continentMap = {
+    'Europa': { minLat: 35, maxLat: 71, minLon: -10, maxLon: 40 },
+    'Asien': { minLat: -10, maxLat: 80, minLon: 40, maxLon: 150 },
+    'Afrika': { minLat: -35, maxLat: 37, minLon: -20, maxLon: 55 },
+    'Nordamerika': { minLat: 15, maxLat: 80, minLon: -170, maxLon: -50 },
+    'Südamerika': { minLat: -56, maxLat: 13, minLon: -85, maxLon: -30 },
+    'Australien': { minLat: -47, maxLat: -10, minLon: 113, maxLon: 154 }
+  };
+
+  const continentFindings = {};
+
+  locations.forEach((loc) => {
+    const [lat, lon] = loc.position;
+    for (const [continent, bounds] of Object.entries(continentMap)) {
+      if (lat >= bounds.minLat && lat <= bounds.maxLat &&
+          lon >= bounds.minLon && lon <= bounds.maxLon) {
+        if (!continentFindings[continent]) {
+          continentFindings[continent] = [];
+        }
+        continentFindings[continent].push(loc);
+        break;
+      }
+    }
+  });
+
+  const continentList = document.getElementById('continentsLeaderboardList');
+  if (!continentList) return;
+  continentList.innerHTML = '';
+
+  // Get sorted continents
+  const sortedContinents = Object.entries(continentFindings)
+    .sort((a, b) => b[1].length - a[1].length);
+
+  if (sortedContinents.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'Noch keine Sticker gefunden';
+    continentList.appendChild(li);
+    return;
+  }
+
+  sortedContinents.forEach((item, index) => {
+    const [continent, findings] = item;
+    const firstFinder = findings[0].finder;
+    const count = findings.length;
+    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🌍';
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="medal">${medal}</span>
+      <span class="leaderboard-author">${continent} (${count} Sticker)</span>
+      <span class="count">Zuerst: ${firstFinder}</span>
+    `;
+    continentList.appendChild(li);
+  });
+}
+
+updateContinentsLeaderboard();
+
+// Toggle animation
+toggleAnimationBtn.addEventListener('click', () => {
+  animationActive = !animationActive;
+  localStorage.setItem('animationActive', animationActive);
+  updateToggleButtonState();
+
+  if (animationActive) {
+    startStickerAnimation();
+  } else {
+    stopStickerAnimation();
+  }
+});
+
+// Initialize animations if enabled
+loadSettings();
+if (animationActive) {
+  startStickerAnimation();
+}
+
 // End of module wrapper
 })();
