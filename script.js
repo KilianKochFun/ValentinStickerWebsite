@@ -897,6 +897,37 @@ if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleVie
 
     const LIGHT = vnorm(v3(-0.6, 1.2, -1.0));
 
+    // How many sticker tiles around the bag
+    const TILES = 4;
+    const SEGS_PER_TILE = SEGS / TILES; // must be integer (24/4=6 ✓)
+
+    // Affine texture-map a triangle onto the canvas.
+    // Maps image coords (u*iw, v*ih) → screen coords (x, y).
+    function drawTriTex(img, iw, ih,
+        x0, y0, u0, v0,
+        x1, y1, u1, v1,
+        x2, y2, u2, v2) {
+      const sx0 = u0 * iw, sy0 = v0 * ih;
+      const sx1 = u1 * iw, sy1 = v1 * ih;
+      const sx2 = u2 * iw, sy2 = v2 * ih;
+      const denom = sx0 * (sy1 - sy2) + sx1 * (sy2 - sy0) + sx2 * (sy0 - sy1);
+      if (Math.abs(denom) < 0.5) return;
+      const a  = (x0*(sy1-sy2) + x1*(sy2-sy0) + x2*(sy0-sy1)) / denom;
+      const b  = (y0*(sy1-sy2) + y1*(sy2-sy0) + y2*(sy0-sy1)) / denom;
+      const c  = (sx0*(x1-x2)  + sx1*(x2-x0)  + sx2*(x0-x1))  / denom;
+      const dd = (sx0*(y1-y2)  + sx1*(y2-y0)  + sx2*(y0-y1))  / denom;
+      const e  = (sx0*(sy1*x2-sy2*x1) + sx1*(sy2*x0-sy0*x2) + sx2*(sy0*x1-sy1*x0)) / denom;
+      const f  = (sx0*(sy1*y2-sy2*y1) + sx1*(sy2*y0-sy0*y2) + sx2*(sy0*y1-sy1*y0)) / denom;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.transform(a, b, c, dd, e, f);
+      ctx.drawImage(img, 0, 0, iw, ih);
+      ctx.restore();
+    }
+
     // ============ TRANSFORM ============
     function transformVert(bv) {
       let [x, y, z] = bv;
@@ -970,46 +1001,74 @@ if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleVie
 
       drawList.sort((a, b) => a.avgZ - b.avgZ);
 
+      const iw = stickerImg.complete && stickerImg.naturalWidth > 0 ? stickerImg.naturalWidth  : 0;
+      const ih = stickerImg.complete && stickerImg.naturalWidth > 0 ? stickerImg.naturalHeight : 0;
+
       for (const { face, pvs, brightness } of drawList) {
         let ok = true;
         for (const p of pvs) { if (!isFinite(p.x) || !isFinite(p.y)) { ok = false; break; } }
         if (!ok) continue;
 
-        ctx.beginPath();
-        ctx.moveTo(pvs[0].x, pvs[0].y);
-        for (let i = 1; i < pvs.length; i++) ctx.lineTo(pvs[i].x, pvs[i].y);
-        ctx.closePath();
-
         if (face.cap) {
+          // Metal caps — plain grey
+          ctx.beginPath();
+          ctx.moveTo(pvs[0].x, pvs[0].y);
+          for (let i = 1; i < pvs.length; i++) ctx.lineTo(pvs[i].x, pvs[i].y);
+          ctx.closePath();
           const g = Math.floor(80 * brightness);
           ctx.fillStyle = `rgb(${g},${g},${g})`;
+          ctx.fill();
         } else {
-          const isBand = (face.t > 0.28 && face.t < 0.38) || (face.t > 0.62 && face.t < 0.72);
-          const facingFront = face.sg / SEGS < 0.15 || face.sg / SEGS > 0.85;
-          const flash = facingFront ? hitFlash * 0.45 : 0;
-          if (isBand) {
-            const v = Math.floor((15 + flash * 60) * brightness);
-            ctx.fillStyle = `rgb(${v},${v},${v})`;
-          } else {
-            const r = Math.floor((185 + flash * 70) * brightness);
-            const g2 = Math.floor(flash * 30 * brightness);
-            ctx.fillStyle = `rgb(${r},${g2},${g2})`;
-          }
-        }
-        ctx.fill();
-      }
+          // Side face: texture-map the sticker image as skin, tiled TILES times around
+          // UV: u tiles every SEGS_PER_TILE segments, v spans full height
+          const uL = (face.sg % SEGS_PER_TILE) / SEGS_PER_TILE;
+          const uR = ((face.sg % SEGS_PER_TILE) + 1) / SEGS_PER_TILE;
+          const vT = (Math.floor(face.t * STACKS) / STACKS);
+          const vB = (Math.floor(face.t * STACKS) + 1) / STACKS;
 
-      // Valentin sticker — only on front face
-      if (stickerImg.complete && stickerImg.naturalWidth > 0) {
-        const frontW = transformVert([0, -BAG_H * 0.42, bagRadius(0.42)]);
-        const backW  = transformVert([0, -BAG_H * 0.42, -bagRadius(0.42)]);
-        if (frontW.z < backW.z) {
-          const fp = project(frontW);
-          const sz = SCALE * bagRadius(0.42) * (FOV / (frontW.z + FOV)) * 1.15;
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, 0.92 - hitFlash * 0.3);
-          ctx.drawImage(stickerImg, fp.x - sz / 2, fp.y - sz / 2, sz, sz);
-          ctx.restore();
+          // Quad corners: [i0=TL, i1=TR, i2=BR, i3=BL]
+          const [p0, p1, p2, p3] = pvs;
+
+          if (iw > 0) {
+            // Triangle 1: TL, TR, BR
+            drawTriTex(stickerImg, iw, ih,
+              p0.x, p0.y, uL, vT,
+              p1.x, p1.y, uR, vT,
+              p2.x, p2.y, uR, vB);
+            // Triangle 2: TL, BR, BL
+            drawTriTex(stickerImg, iw, ih,
+              p0.x, p0.y, uL, vT,
+              p2.x, p2.y, uR, vB,
+              p3.x, p3.y, uL, vB);
+          } else {
+            // Fallback: plain red if image not loaded yet
+            ctx.beginPath();
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i < pvs.length; i++) ctx.lineTo(pvs[i].x, pvs[i].y);
+            ctx.closePath();
+            ctx.fillStyle = `rgb(${Math.floor(185*brightness)},0,0)`;
+            ctx.fill();
+          }
+
+          // Lighting overlay: dark = shadowed, transparent = lit
+          ctx.beginPath();
+          ctx.moveTo(pvs[0].x, pvs[0].y);
+          for (let i = 1; i < pvs.length; i++) ctx.lineTo(pvs[i].x, pvs[i].y);
+          ctx.closePath();
+          const shadow = Math.max(0, 1 - brightness) * 0.72;
+          ctx.fillStyle = `rgba(0,0,0,${shadow.toFixed(3)})`;
+          ctx.fill();
+
+          // Hit flash
+          const facingFront = face.sg / SEGS < 0.15 || face.sg / SEGS > 0.85;
+          if (facingFront && hitFlash > 0) {
+            ctx.beginPath();
+            ctx.moveTo(pvs[0].x, pvs[0].y);
+            for (let i = 1; i < pvs.length; i++) ctx.lineTo(pvs[i].x, pvs[i].y);
+            ctx.closePath();
+            ctx.fillStyle = `rgba(255,80,0,${(hitFlash * 0.35).toFixed(3)})`;
+            ctx.fill();
+          }
         }
       }
 
