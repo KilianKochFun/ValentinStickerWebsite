@@ -790,5 +790,398 @@ if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleVie
   observer.observe(toggleViewBtn, { childList: true, characterData: true, subtree: true });
 }
 
+// 3D PUNCHING BAG - ECHTES 3D MIT MATRIX-TRANSFORMATIONEN
+const bagCanvas = document.getElementById('bagCanvas');
+const ctx = bagCanvas ? bagCanvas.getContext('2d') : null;
+const punchCountEl = document.getElementById('punchCount');
+const stickerImg = document.getElementById('stickerImg');
+
+let punchCounter = 0;
+
+if (bagCanvas && ctx) {
+  // Setup Canvas
+  function setupCanvas() {
+    const rect = bagCanvas.getBoundingClientRect();
+    bagCanvas.width = rect.width;
+    bagCanvas.height = rect.height;
+  }
+  setupCanvas();
+  window.addEventListener('resize', setupCanvas);
+
+  // ============ 3D MATH ENGINE ============
+  class Vector3 {
+    constructor(x = 0, y = 0, z = 0) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+    }
+    add(v) {
+      return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
+    }
+    subtract(v) {
+      return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
+    }
+    multiply(scalar) {
+      return new Vector3(this.x * scalar, this.y * scalar, this.z * scalar);
+    }
+    dot(v) {
+      return this.x * v.x + this.y * v.y + this.z * v.z;
+    }
+    cross(v) {
+      return new Vector3(
+        this.y * v.z - this.z * v.y,
+        this.z * v.x - this.x * v.z,
+        this.x * v.y - this.y * v.x
+      );
+    }
+    normalize() {
+      const len = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+      return new Vector3(this.x / len, this.y / len, this.z / len);
+    }
+  }
+
+  class Matrix4 {
+    constructor() {
+      this.m = [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ];
+    }
+    static rotateX(angle) {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      const m = new Matrix4();
+      m.m = [
+        1, 0, 0, 0,
+        0, c, -s, 0,
+        0, s, c, 0,
+        0, 0, 0, 1
+      ];
+      return m;
+    }
+    static rotateY(angle) {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      const m = new Matrix4();
+      m.m = [
+        c, 0, s, 0,
+        0, 1, 0, 0,
+        -s, 0, c, 0,
+        0, 0, 0, 1
+      ];
+      return m;
+    }
+    static rotateZ(angle) {
+      const c = Math.cos(angle);
+      const s = Math.sin(angle);
+      const m = new Matrix4();
+      m.m = [
+        c, -s, 0, 0,
+        s, c, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ];
+      return m;
+    }
+    static translate(x, y, z) {
+      const m = new Matrix4();
+      m.m[12] = x;
+      m.m[13] = y;
+      m.m[14] = z;
+      return m;
+    }
+    multiply(other) {
+      const result = new Matrix4();
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 4; j++) {
+          let sum = 0;
+          for (let k = 0; k < 4; k++) {
+            sum += this.m[i * 4 + k] * other.m[k * 4 + j];
+          }
+          result.m[i * 4 + j] = sum;
+        }
+      }
+      return result;
+    }
+    transformPoint(v) {
+      const x = v.x * this.m[0] + v.y * this.m[4] + v.z * this.m[8] + this.m[12];
+      const y = v.x * this.m[1] + v.y * this.m[5] + v.z * this.m[9] + this.m[13];
+      const z = v.x * this.m[2] + v.y * this.m[6] + v.z * this.m[10] + this.m[14];
+      return new Vector3(x, y, z);
+    }
+  }
+
+  // ============ 3D MODEL ============
+  function createCylinderMesh(radius, height, segments) {
+    const vertices = [];
+    const faces = [];
+
+    // Create cylinder vertices
+    for (let i = 0; i <= segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      // Top ring
+      vertices.push(new Vector3(x, height / 2, z));
+      // Bottom ring
+      vertices.push(new Vector3(x, -height / 2, z));
+    }
+
+    // Create side faces
+    for (let i = 0; i < segments; i++) {
+      const top1 = i * 2;
+      const bottom1 = i * 2 + 1;
+      const top2 = ((i + 1) % segments) * 2;
+      const bottom2 = ((i + 1) % segments) * 2 + 1;
+
+      // Calculate normal for lighting
+      const angle = (i / segments) * Math.PI * 2;
+      const brightness = 0.4 + Math.cos(angle) * 0.5;
+      const r = Math.floor(139 * brightness);
+      const color = `rgb(${r}, 0, 0)`;
+
+      faces.push({ v: [top1, top2, bottom2, bottom1], color });
+    }
+
+    // Top cap
+    const topVertIdx = vertices.length;
+    vertices.push(new Vector3(0, height / 2, 0));
+    for (let i = 0; i < segments; i++) {
+      const v1 = i * 2;
+      const v2 = ((i + 1) % segments) * 2;
+      faces.push({ v: [v1, v2, topVertIdx], color: '#555555' });
+    }
+
+    // Bottom cap
+    const botVertIdx = vertices.length;
+    vertices.push(new Vector3(0, -height / 2, 0));
+    for (let i = segments - 1; i >= 0; i--) {
+      const v1 = i * 2 + 1;
+      const v2 = ((i + 1) % segments) * 2 + 1;
+      faces.push({ v: [v1, botVertIdx, v2], color: '#555555' });
+    }
+
+    return { vertices, faces };
+  }
+
+  // ============ PHYSICS ============
+  const physics = {
+    angleX: 0,
+    angleZ: 0,
+    velocityX: 0,
+    velocityZ: 0,
+    rotationY: 0,
+    rotationVelocityY: 0,
+    damping: 0.95,
+    gravity: 0.03,
+    ropeLength: 0.8,
+    scale: 180,
+    yOffset: -150
+  };
+
+  let particles = [];
+
+  // ============ RENDERING ============
+  function render() {
+    ctx.fillStyle = '#87CEEB';
+    ctx.fillRect(0, 0, bagCanvas.width, bagCanvas.height);
+
+    const fov = 5;
+
+    // Create pendulum transformation
+    const swingX = Matrix4.rotateZ(physics.angleX);
+    const swingZ = Matrix4.rotateX(physics.angleZ);
+    const rotateSelf = Matrix4.rotateY(physics.rotationY);
+    const translateDown = Matrix4.translate(0, -physics.ropeLength, 0);
+
+    const transform = swingX.multiply(swingZ).multiply(translateDown).multiply(rotateSelf);
+
+    // Create bag mesh
+    const bagMesh = createCylinderMesh(0.5, 1.8, 18);
+
+    // Transform bag vertices
+    const transformedBag = bagMesh.vertices.map(v => transform.transformPoint(v));
+
+    // Project to screen
+    const screenBag = transformedBag.map(v => {
+      const z = v.z + fov;
+      const scale = fov / Math.max(0.1, z);
+      return {
+        x: bagCanvas.width / 2 + v.x * scale * physics.scale,
+        y: bagCanvas.height / 2 + physics.yOffset - v.y * scale * physics.scale,
+        z: v.z
+      };
+    });
+
+    // ============ RENDER ROPE IN 3D ============
+    const ropeMesh = createCylinderMesh(0.04, physics.ropeLength, 8);
+    const ropeTransform = swingX.multiply(swingZ).multiply(Matrix4.translate(0, -physics.ropeLength / 2, 0));
+    const transformedRope = ropeMesh.vertices.map(v => ropeTransform.transformPoint(v));
+
+    const screenRope = transformedRope.map(v => {
+      const z = v.z + fov;
+      const scale = fov / Math.max(0.1, z);
+      return {
+        x: bagCanvas.width / 2 + v.x * scale * physics.scale,
+        y: bagCanvas.height / 2 + physics.yOffset - v.y * scale * physics.scale,
+        z: v.z
+      };
+    });
+
+    // Sort all faces by depth
+    const allFaces = [];
+
+    ropeMesh.faces.forEach(face => {
+      const avgZ = face.v.reduce((sum, idx) => sum + transformedRope[idx].z, 0) / face.v.length;
+      allFaces.push({ face, vertices: screenRope, avgZ, color: '#888888' });
+    });
+
+    bagMesh.faces.forEach(face => {
+      const avgZ = face.v.reduce((sum, idx) => sum + transformedBag[idx].z, 0) / face.v.length;
+      allFaces.push({ face, vertices: screenBag, avgZ, color: face.color });
+    });
+
+    allFaces.sort((a, b) => a.avgZ - b.avgZ);
+
+    // Draw all faces
+    allFaces.forEach(({ face, vertices, color }) => {
+      ctx.fillStyle = color;
+      ctx.strokeStyle = color === '#888888' ? '#666666' : '#5a0000';
+      ctx.lineWidth = 0.8;
+
+      ctx.beginPath();
+      const first = vertices[face.v[0]];
+      ctx.moveTo(first.x, first.y);
+
+      for (let i = 1; i < face.v.length; i++) {
+        const v = vertices[face.v[i]];
+        ctx.lineTo(v.x, v.y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    // Draw sticker
+    if (stickerImg && stickerImg.complete) {
+      const stickerPos = transform.transformPoint(new Vector3(0, 0, 0.5));
+      const z = stickerPos.z + fov;
+      const sScale = fov / Math.max(0.1, z);
+      const sX = bagCanvas.width / 2 + stickerPos.x * sScale * physics.scale;
+      const sY = bagCanvas.height / 2 + physics.yOffset - stickerPos.y * sScale * physics.scale;
+      const size = 60 * sScale;
+
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.drawImage(stickerImg, sX - size / 2, sY - size / 2, size, size);
+      ctx.restore();
+    }
+  }
+
+  function updatePhysics() {
+    // Pendulum physics - gravity creates restoring force
+    const gForceX = -Math.sin(physics.angleX) * physics.gravity;
+    const gForceZ = -Math.sin(physics.angleZ) * physics.gravity;
+
+    physics.velocityX += gForceX;
+    physics.velocityZ += gForceZ;
+
+    // Apply damping
+    physics.velocityX *= physics.damping;
+    physics.velocityZ *= physics.damping;
+    physics.rotationVelocityY *= physics.damping;
+
+    // Update angles
+    physics.angleX += physics.velocityX;
+    physics.angleZ += physics.velocityZ;
+    physics.rotationY += physics.rotationVelocityY;
+
+    // Limit swing angles
+    physics.angleX = Math.max(-0.8, Math.min(0.8, physics.angleX));
+    physics.angleZ = Math.max(-0.8, Math.min(0.8, physics.angleZ));
+  }
+
+  function drawParticles() {
+    particles = particles.filter(p => p.life-- > 0);
+
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.2;
+
+      const opacity = p.life / p.maxLife;
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.font = 'bold 22px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.emoji, p.x, p.y);
+      ctx.restore();
+    });
+  }
+
+  // Click handler
+  bagCanvas.addEventListener('click', (e) => {
+    const rect = bagCanvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const centerX = bagCanvas.width / 2;
+    const centerY = bagCanvas.height / 2 + physics.yOffset;
+
+    // Calculate direction from bag center to click
+    const dx = clickX - centerX;
+    const dy = clickY - centerY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Only register hit if clicking near the bag
+    if (distance > 250) return;
+
+    // Calculate force based on click position
+    const force = Math.max(0.2, 2.0 - distance / 100);
+
+    // Apply force as impulse to pendulum
+    // Left-Right swing (Z rotation)
+    physics.velocityX += (dx / 100) * force * 0.15;
+
+    // Forward-Back swing (X rotation)
+    physics.velocityZ += (dy / 100) * force * 0.15;
+
+    // Spin
+    physics.rotationVelocityY += (dx / 100) * force * 0.05;
+
+    punchCounter++;
+    punchCountEl.textContent = punchCounter;
+
+    // Particles
+    const emojis = ['💥', '⚡', '✨', '🎯', '💫', '🌟', '⭐', '💪'];
+    for (let i = 0; i < 12; i++) {
+      const angle = (Math.PI * 2 * i) / 12 + (Math.random() - 0.5) * 0.6;
+      const speed = 3 + Math.random() * 4;
+      particles.push({
+        x: clickX,
+        y: clickY,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        life: 80,
+        maxLife: 80,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)]
+      });
+    }
+  });
+
+  // Animation loop
+  function animate() {
+    updatePhysics();
+    render();
+    drawParticles();
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
 // End of module wrapper
 })();

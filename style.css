@@ -668,3 +668,49 @@ body {
 .disclaimer-box strong {
   color: #000;
 }
+
+/* PUNCHING BAG SECTION */
+.punching-bag-section {
+  background-color: var(--color-bg-light);
+  width: 90%;
+  border: 3px solid var(--color-primary);
+  border-radius: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+  margin: 15px auto;
+  box-shadow: var(--box-shadow);
+}
+
+.punching-bag-section h3 {
+  text-align: center;
+  color: var(--color-primary);
+  margin: 0 0 20px 0;
+  font-size: 1.2rem;
+}
+
+.punching-bag-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.punching-bag-canvas {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  height: 400px;
+  background: linear-gradient(135deg, #87CEEB 0%, #E0F6FF 100%);
+  border: 2px solid var(--color-primary);
+  border-radius: 8px;
+  cursor: crosshair;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.punch-counter {
+  text-align: center;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+  font-weight: bold;
+  margin: 0;
+}
