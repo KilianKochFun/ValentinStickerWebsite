@@ -790,397 +790,332 @@ if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleVie
   observer.observe(toggleViewBtn, { childList: true, characterData: true, subtree: true });
 }
 
-// 3D PUNCHING BAG - ECHTES 3D MIT MATRIX-TRANSFORMATIONEN
-const bagCanvas = document.getElementById('bagCanvas');
-const ctx = bagCanvas ? bagCanvas.getContext('2d') : null;
-const punchCountEl = document.getElementById('punchCount');
-const stickerImg = document.getElementById('stickerImg');
+// ============ 3D PUNCHING BAG ============
+{
+  const bagCanvas = document.getElementById('bagCanvas');
+  if (bagCanvas) {
+    const ctx = bagCanvas.getContext('2d');
+    const punchCountEl = document.getElementById('punchCount');
+    const dpr = window.devicePixelRatio || 1;
+    let cssW = 0, cssH = 0;
 
-let punchCounter = 0;
+    function setupCanvas() {
+      const rect = bagCanvas.getBoundingClientRect();
+      cssW = rect.width || 400;
+      cssH = rect.height || 400;
+      bagCanvas.width = cssW * dpr;
+      bagCanvas.height = cssH * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    setupCanvas();
+    window.addEventListener('resize', setupCanvas);
 
-if (bagCanvas && ctx) {
-  // Setup Canvas
-  function setupCanvas() {
-    const rect = bagCanvas.getBoundingClientRect();
-    bagCanvas.width = rect.width;
-    bagCanvas.height = rect.height;
-  }
-  setupCanvas();
-  window.addEventListener('resize', setupCanvas);
+    // Sticker image
+    const stickerImg = new Image();
+    stickerImg.src = 'img/valentinSticker.webp';
 
-  // ============ 3D MATH ENGINE ============
-  class Vector3 {
-    constructor(x = 0, y = 0, z = 0) {
-      this.x = x;
-      this.y = y;
-      this.z = z;
-    }
-    add(v) {
-      return new Vector3(this.x + v.x, this.y + v.y, this.z + v.z);
-    }
-    subtract(v) {
-      return new Vector3(this.x - v.x, this.y - v.y, this.z - v.z);
-    }
-    multiply(scalar) {
-      return new Vector3(this.x * scalar, this.y * scalar, this.z * scalar);
-    }
-    dot(v) {
-      return this.x * v.x + this.y * v.y + this.z * v.z;
-    }
-    cross(v) {
-      return new Vector3(
-        this.y * v.z - this.z * v.y,
-        this.z * v.x - this.x * v.z,
-        this.x * v.y - this.y * v.x
-      );
-    }
-    normalize() {
-      const len = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-      return new Vector3(this.x / len, this.y / len, this.z / len);
-    }
-  }
+    // ============ MATH HELPERS ============
+    const v3 = (x, y, z) => ({ x, y, z });
+    const vsub = (a, b) => v3(a.x - b.x, a.y - b.y, a.z - b.z);
+    const vdot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+    const vcross = (a, b) => v3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+    const vnorm = v => { const l = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z) || 1; return v3(v.x/l, v.y/l, v.z/l); };
+    const rotY = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return v3(v.x*c + v.z*s, v.y, -v.x*s + v.z*c); };
+    const rotZ = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return v3(v.x*c - v.y*s, v.x*s + v.y*c, v.z); };
+    const rotX = (v, a) => { const c = Math.cos(a), s = Math.sin(a); return v3(v.x, v.y*c - v.z*s, v.y*s + v.z*c); };
 
-  class Matrix4 {
-    constructor() {
-      this.m = [
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-      ];
+    // Perspective projection
+    const FOV   = 4.5;
+    const SCALE = 155;
+    const VOFF  = -60; // vertical offset in CSS pixels (bag hangs from above center)
+
+    function project(v) {
+      const z = v.z + FOV;
+      const s = FOV / Math.max(0.01, z);
+      return { x: cssW / 2 + v.x * s * SCALE, y: cssH / 2 + VOFF - v.y * s * SCALE, z: v.z, s };
     }
-    static rotateX(angle) {
-      const c = Math.cos(angle);
-      const s = Math.sin(angle);
-      const m = new Matrix4();
-      m.m = [
-        1, 0, 0, 0,
-        0, c, -s, 0,
-        0, s, c, 0,
-        0, 0, 0, 1
-      ];
-      return m;
+
+    // ============ BAG GEOMETRY ============
+    // Realistic tapered heavy-bag profile (built once, transformed per frame)
+    const SEGS   = 24;
+    const STACKS = 10;
+    const BAG_H  = 2.0;
+    const ROPE_L = 0.55;
+
+    function bagRadius(t) {
+      // t: 0=top, 1=bottom — widest around t=0.45
+      if (t < 0.15) return 0.30 + (t / 0.15) * 0.22;
+      if (t < 0.45) return 0.52 + ((t - 0.15) / 0.30) * 0.08;
+      if (t < 0.75) return 0.60 - ((t - 0.45) / 0.30) * 0.12;
+      return 0.48 - ((t - 0.75) / 0.25) * 0.18;
     }
-    static rotateY(angle) {
-      const c = Math.cos(angle);
-      const s = Math.sin(angle);
-      const m = new Matrix4();
-      m.m = [
-        c, 0, s, 0,
-        0, 1, 0, 0,
-        -s, 0, c, 0,
-        0, 0, 0, 1
-      ];
-      return m;
+
+    const bagVerts = [];
+    for (let st = 0; st <= STACKS; st++) {
+      const t = st / STACKS;
+      const y = -t * BAG_H;
+      const r = bagRadius(t);
+      for (let sg = 0; sg < SEGS; sg++) {
+        const a = (sg / SEGS) * Math.PI * 2;
+        bagVerts.push([r * Math.cos(a), y, r * Math.sin(a)]);
+      }
     }
-    static rotateZ(angle) {
-      const c = Math.cos(angle);
-      const s = Math.sin(angle);
-      const m = new Matrix4();
-      m.m = [
-        c, -s, 0, 0,
-        s, c, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-      ];
-      return m;
+    const BOT_CAP_IDX = bagVerts.length;
+    bagVerts.push([0, -BAG_H, 0]);
+    const TOP_CAP_IDX = bagVerts.length;
+    bagVerts.push([0, 0, 0]);
+
+    const bagFaces = [];
+    for (let st = 0; st < STACKS; st++) {
+      for (let sg = 0; sg < SEGS; sg++) {
+        const i0 = st * SEGS + sg;
+        const i1 = st * SEGS + (sg + 1) % SEGS;
+        const i2 = (st + 1) * SEGS + (sg + 1) % SEGS;
+        const i3 = (st + 1) * SEGS + sg;
+        bagFaces.push({ vi: [i0, i1, i2, i3], t: (st + 0.5) / STACKS, sg, cap: false });
+      }
     }
-    static translate(x, y, z) {
-      const m = new Matrix4();
-      m.m[12] = x;
-      m.m[13] = y;
-      m.m[14] = z;
-      return m;
+    for (let sg = 0; sg < SEGS; sg++) {
+      bagFaces.push({ vi: [STACKS * SEGS + sg, BOT_CAP_IDX, STACKS * SEGS + (sg + 1) % SEGS], t: 1, sg, cap: true, bot: true });
+      bagFaces.push({ vi: [sg, (sg + 1) % SEGS, TOP_CAP_IDX], t: 0, sg, cap: true, bot: false });
     }
-    multiply(other) {
-      const result = new Matrix4();
-      for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-          let sum = 0;
-          for (let k = 0; k < 4; k++) {
-            sum += this.m[i * 4 + k] * other.m[k * 4 + j];
+
+    // ============ PHYSICS STATE ============
+    const ph = {
+      swX: 0, swZ: 0,
+      vX: 0,  vZ: 0,
+      spinY: 0, vSpinY: 0,
+      squish: 0, vSquish: 0,
+    };
+    const DAMPING  = 0.965;
+    const GRAVITY  = 0.022;
+    const SPIN_DMP = 0.982;
+
+    let punchCount = 0;
+    let particles  = [];
+    let hitFlash   = 0;
+
+    const LIGHT = vnorm(v3(-0.6, 1.2, -1.0));
+
+    // ============ TRANSFORM ============
+    function transformVert(bv) {
+      let [x, y, z] = bv;
+      // Impact squish: compress vertically, bulge outward at hit point
+      const squishBulge = 1 + ph.squish * 0.18 * Math.sin((-y / BAG_H) * Math.PI);
+      x *= squishBulge;
+      z *= squishBulge;
+      y *= (1 - ph.squish * 0.06);
+
+      let p = v3(x, y, z);
+      p = rotY(p, ph.spinY);
+      // Pendulum: translate to pivot, rotate, translate back
+      p.y += ROPE_L;
+      p = rotZ(p, ph.swX);
+      p = rotX(p, ph.swZ);
+      p.y -= ROPE_L;
+      return p;
+    }
+
+    // ============ RENDER ============
+    function render() {
+      ctx.clearRect(0, 0, cssW, cssH);
+
+      // Dark gym background
+      const bg = ctx.createLinearGradient(0, 0, 0, cssH);
+      bg.addColorStop(0, '#1e1e2a');
+      bg.addColorStop(1, '#12121a');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, cssW, cssH);
+
+      // Red floor glow below bag
+      const bagBotPx = project(transformVert([0, -BAG_H, 0]));
+      const glow = ctx.createRadialGradient(bagBotPx.x, bagBotPx.y + 20, 0, bagBotPx.x, bagBotPx.y + 20, 90);
+      glow.addColorStop(0, 'rgba(200,0,0,0.18)');
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, cssW, cssH);
+
+      // Transform all vertices
+      const tw = bagVerts.map(bv => transformVert(bv));
+      const pw = tw.map(v => project(v));
+
+      // Build face draw list with depth + lighting
+      const drawList = [];
+      for (const face of bagFaces) {
+        const tvs = face.vi.map(i => tw[i]);
+        const pvs = face.vi.map(i => pw[i]);
+        const avgZ = tvs.reduce((s, v) => s + v.z, 0) / tvs.length;
+
+        // Face normal
+        let normal;
+        if (face.cap) {
+          normal = v3(0, face.bot ? -1 : 1, 0);
+        } else {
+          const e1 = vsub(tvs[1], tvs[0]);
+          const e2 = vsub(tvs[3], tvs[0]);
+          normal = vnorm(vcross(e1, e2));
+        }
+
+        // Backface cull
+        const toCam = vnorm(v3(-tvs[0].x, -tvs[0].y, FOV - tvs[0].z));
+        if (vdot(normal, toCam) < 0) continue;
+
+        // Diffuse + ambient lighting
+        const diffuse = Math.max(0, vdot(normal, LIGHT));
+        const rimDot  = 1 - Math.abs(vdot(normal, toCam));
+        const brightness = Math.min(1, 0.22 + diffuse * 0.78 + rimDot * rimDot * 0.12);
+
+        drawList.push({ face, pvs, avgZ, brightness });
+      }
+
+      drawList.sort((a, b) => a.avgZ - b.avgZ);
+
+      for (const { face, pvs, brightness } of drawList) {
+        let ok = true;
+        for (const p of pvs) { if (!isFinite(p.x) || !isFinite(p.y)) { ok = false; break; } }
+        if (!ok) continue;
+
+        ctx.beginPath();
+        ctx.moveTo(pvs[0].x, pvs[0].y);
+        for (let i = 1; i < pvs.length; i++) ctx.lineTo(pvs[i].x, pvs[i].y);
+        ctx.closePath();
+
+        if (face.cap) {
+          const g = Math.floor(80 * brightness);
+          ctx.fillStyle = `rgb(${g},${g},${g})`;
+        } else {
+          const isBand = (face.t > 0.28 && face.t < 0.38) || (face.t > 0.62 && face.t < 0.72);
+          const facingFront = face.sg / SEGS < 0.15 || face.sg / SEGS > 0.85;
+          const flash = facingFront ? hitFlash * 0.45 : 0;
+          if (isBand) {
+            const v = Math.floor((15 + flash * 60) * brightness);
+            ctx.fillStyle = `rgb(${v},${v},${v})`;
+          } else {
+            const r = Math.floor((185 + flash * 70) * brightness);
+            const g2 = Math.floor(flash * 30 * brightness);
+            ctx.fillStyle = `rgb(${r},${g2},${g2})`;
           }
-          result.m[i * 4 + j] = sum;
+        }
+        ctx.fill();
+      }
+
+      // Valentin sticker — only on front face
+      if (stickerImg.complete && stickerImg.naturalWidth > 0) {
+        const frontW = transformVert([0, -BAG_H * 0.42, bagRadius(0.42)]);
+        const backW  = transformVert([0, -BAG_H * 0.42, -bagRadius(0.42)]);
+        if (frontW.z < backW.z) {
+          const fp = project(frontW);
+          const sz = SCALE * bagRadius(0.42) * (FOV / (frontW.z + FOV)) * 1.15;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, 0.92 - hitFlash * 0.3);
+          ctx.drawImage(stickerImg, fp.x - sz / 2, fp.y - sz / 2, sz, sz);
+          ctx.restore();
         }
       }
-      return result;
-    }
-    transformPoint(v) {
-      const x = v.x * this.m[0] + v.y * this.m[4] + v.z * this.m[8] + this.m[12];
-      const y = v.x * this.m[1] + v.y * this.m[5] + v.z * this.m[9] + this.m[13];
-      const z = v.x * this.m[2] + v.y * this.m[6] + v.z * this.m[10] + this.m[14];
-      return new Vector3(x, y, z);
-    }
-  }
 
-  // ============ 3D MODEL ============
-  function createCylinderMesh(radius, height, segments) {
-    const vertices = [];
-    const faces = [];
-
-    // Create cylinder vertices
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const x = Math.cos(angle) * radius;
-      const z = Math.sin(angle) * radius;
-      // Top ring
-      vertices.push(new Vector3(x, height / 2, z));
-      // Bottom ring
-      vertices.push(new Vector3(x, -height / 2, z));
-    }
-
-    // Create side faces
-    for (let i = 0; i < segments; i++) {
-      const top1 = i * 2;
-      const bottom1 = i * 2 + 1;
-      const top2 = ((i + 1) % segments) * 2;
-      const bottom2 = ((i + 1) % segments) * 2 + 1;
-
-      // Calculate normal for lighting
-      const angle = (i / segments) * Math.PI * 2;
-      const brightness = 0.4 + Math.cos(angle) * 0.5;
-      const r = Math.floor(139 * brightness);
-      const color = `rgb(${r}, 0, 0)`;
-
-      faces.push({ v: [top1, top2, bottom2, bottom1], color });
-    }
-
-    // Top cap
-    const topVertIdx = vertices.length;
-    vertices.push(new Vector3(0, height / 2, 0));
-    for (let i = 0; i < segments; i++) {
-      const v1 = i * 2;
-      const v2 = ((i + 1) % segments) * 2;
-      faces.push({ v: [v1, v2, topVertIdx], color: '#555555' });
-    }
-
-    // Bottom cap
-    const botVertIdx = vertices.length;
-    vertices.push(new Vector3(0, -height / 2, 0));
-    for (let i = segments - 1; i >= 0; i--) {
-      const v1 = i * 2 + 1;
-      const v2 = ((i + 1) % segments) * 2 + 1;
-      faces.push({ v: [v1, botVertIdx, v2], color: '#555555' });
-    }
-
-    return { vertices, faces };
-  }
-
-  // ============ PHYSICS ============
-  const physics = {
-    angleX: 0,
-    angleZ: 0,
-    velocityX: 0,
-    velocityZ: 0,
-    rotationY: 0,
-    rotationVelocityY: 0,
-    damping: 0.95,
-    gravity: 0.03,
-    ropeLength: 0.8,
-    scale: 180,
-    yOffset: -150
-  };
-
-  let particles = [];
-
-  // ============ RENDERING ============
-  function render() {
-    ctx.fillStyle = '#87CEEB';
-    ctx.fillRect(0, 0, bagCanvas.width, bagCanvas.height);
-
-    const fov = 5;
-
-    // Create pendulum transformation
-    const swingX = Matrix4.rotateZ(physics.angleX);
-    const swingZ = Matrix4.rotateX(physics.angleZ);
-    const rotateSelf = Matrix4.rotateY(physics.rotationY);
-    const translateDown = Matrix4.translate(0, -physics.ropeLength, 0);
-
-    const transform = swingX.multiply(swingZ).multiply(translateDown).multiply(rotateSelf);
-
-    // Create bag mesh
-    const bagMesh = createCylinderMesh(0.5, 1.8, 18);
-
-    // Transform bag vertices
-    const transformedBag = bagMesh.vertices.map(v => transform.transformPoint(v));
-
-    // Project to screen
-    const screenBag = transformedBag.map(v => {
-      const z = v.z + fov;
-      const scale = fov / Math.max(0.1, z);
-      return {
-        x: bagCanvas.width / 2 + v.x * scale * physics.scale,
-        y: bagCanvas.height / 2 + physics.yOffset - v.y * scale * physics.scale,
-        z: v.z
-      };
-    });
-
-    // ============ RENDER ROPE IN 3D ============
-    const ropeMesh = createCylinderMesh(0.04, physics.ropeLength, 8);
-    const ropeTransform = swingX.multiply(swingZ).multiply(Matrix4.translate(0, -physics.ropeLength / 2, 0));
-    const transformedRope = ropeMesh.vertices.map(v => ropeTransform.transformPoint(v));
-
-    const screenRope = transformedRope.map(v => {
-      const z = v.z + fov;
-      const scale = fov / Math.max(0.1, z);
-      return {
-        x: bagCanvas.width / 2 + v.x * scale * physics.scale,
-        y: bagCanvas.height / 2 + physics.yOffset - v.y * scale * physics.scale,
-        z: v.z
-      };
-    });
-
-    // Sort all faces by depth
-    const allFaces = [];
-
-    ropeMesh.faces.forEach(face => {
-      const avgZ = face.v.reduce((sum, idx) => sum + transformedRope[idx].z, 0) / face.v.length;
-      allFaces.push({ face, vertices: screenRope, avgZ, color: '#888888' });
-    });
-
-    bagMesh.faces.forEach(face => {
-      const avgZ = face.v.reduce((sum, idx) => sum + transformedBag[idx].z, 0) / face.v.length;
-      allFaces.push({ face, vertices: screenBag, avgZ, color: face.color });
-    });
-
-    allFaces.sort((a, b) => a.avgZ - b.avgZ);
-
-    // Draw all faces
-    allFaces.forEach(({ face, vertices, color }) => {
-      ctx.fillStyle = color;
-      ctx.strokeStyle = color === '#888888' ? '#666666' : '#5a0000';
-      ctx.lineWidth = 0.8;
-
+      // Rope from ceiling to bag top
+      const mountPx  = { x: cssW / 2, y: cssH / 2 + VOFF - SCALE * ROPE_L };
+      const bagTopPx = project(transformVert([0, 0, 0]));
+      ctx.save();
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
       ctx.beginPath();
-      const first = vertices[face.v[0]];
-      ctx.moveTo(first.x, first.y);
-
-      for (let i = 1; i < face.v.length; i++) {
-        const v = vertices[face.v[i]];
-        ctx.lineTo(v.x, v.y);
-      }
-      ctx.closePath();
-      ctx.fill();
+      ctx.moveTo(mountPx.x, mountPx.y);
+      ctx.lineTo(bagTopPx.x, bagTopPx.y);
       ctx.stroke();
-    });
-
-    // Draw sticker
-    if (stickerImg && stickerImg.complete) {
-      const stickerPos = transform.transformPoint(new Vector3(0, 0, 0.5));
-      const z = stickerPos.z + fov;
-      const sScale = fov / Math.max(0.1, z);
-      const sX = bagCanvas.width / 2 + stickerPos.x * sScale * physics.scale;
-      const sY = bagCanvas.height / 2 + physics.yOffset - stickerPos.y * sScale * physics.scale;
-      const size = 60 * sScale;
-
-      ctx.save();
-      ctx.globalAlpha = 0.95;
-      ctx.drawImage(stickerImg, sX - size / 2, sY - size / 2, size, size);
+      ctx.fillStyle = '#aaa';
+      ctx.beginPath();
+      ctx.arc(mountPx.x, mountPx.y, 5, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
-    }
-  }
 
-  function updatePhysics() {
-    // Pendulum physics - gravity creates restoring force
-    const gForceX = -Math.sin(physics.angleX) * physics.gravity;
-    const gForceZ = -Math.sin(physics.angleZ) * physics.gravity;
-
-    physics.velocityX += gForceX;
-    physics.velocityZ += gForceZ;
-
-    // Apply damping
-    physics.velocityX *= physics.damping;
-    physics.velocityZ *= physics.damping;
-    physics.rotationVelocityY *= physics.damping;
-
-    // Update angles
-    physics.angleX += physics.velocityX;
-    physics.angleZ += physics.velocityZ;
-    physics.rotationY += physics.rotationVelocityY;
-
-    // Limit swing angles
-    physics.angleX = Math.max(-0.8, Math.min(0.8, physics.angleX));
-    physics.angleZ = Math.max(-0.8, Math.min(0.8, physics.angleZ));
-  }
-
-  function drawParticles() {
-    particles = particles.filter(p => p.life-- > 0);
-
-    particles.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vy += 0.2;
-
-      const opacity = p.life / p.maxLife;
-      ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.font = 'bold 22px Arial';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p.emoji, p.x, p.y);
-      ctx.restore();
-    });
-  }
-
-  // Click handler
-  bagCanvas.addEventListener('click', (e) => {
-    const rect = bagCanvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const centerX = bagCanvas.width / 2;
-    const centerY = bagCanvas.height / 2 + physics.yOffset;
-
-    // Calculate direction from bag center to click
-    const dx = clickX - centerX;
-    const dy = clickY - centerY;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Only register hit if clicking near the bag
-    if (distance > 250) return;
-
-    // Calculate force based on click position
-    const force = Math.max(0.2, 2.0 - distance / 100);
-
-    // Apply force as impulse to pendulum
-    // Left-Right swing (Z rotation)
-    physics.velocityX += (dx / 100) * force * 0.15;
-
-    // Forward-Back swing (X rotation)
-    physics.velocityZ += (dy / 100) * force * 0.15;
-
-    // Spin
-    physics.rotationVelocityY += (dx / 100) * force * 0.05;
-
-    punchCounter++;
-    punchCountEl.textContent = punchCounter;
-
-    // Particles
-    const emojis = ['💥', '⚡', '✨', '🎯', '💫', '🌟', '⭐', '💪'];
-    for (let i = 0; i < 12; i++) {
-      const angle = (Math.PI * 2 * i) / 12 + (Math.random() - 0.5) * 0.6;
-      const speed = 3 + Math.random() * 4;
-      particles.push({
-        x: clickX,
-        y: clickY,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1.5,
-        life: 80,
-        maxLife: 80,
-        emoji: emojis[Math.floor(Math.random() * emojis.length)]
+      // Particles
+      particles = particles.filter(p => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.life--;
+        if (p.life <= 0) return false;
+        ctx.save();
+        ctx.globalAlpha = p.life / p.maxLife;
+        ctx.font = `bold ${p.size}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.emoji, p.x, p.y);
+        ctx.restore();
+        return true;
       });
+
+      hitFlash = Math.max(0, hitFlash - 0.06);
     }
-  });
 
-  // Animation loop
-  function animate() {
-    updatePhysics();
-    render();
-    drawParticles();
-    requestAnimationFrame(animate);
+    // ============ PHYSICS UPDATE ============
+    function updatePhysics() {
+      ph.vX += -Math.sin(ph.swX) * GRAVITY;
+      ph.vZ += -Math.sin(ph.swZ) * GRAVITY;
+      ph.vX *= DAMPING;
+      ph.vZ *= DAMPING;
+      ph.vSpinY *= SPIN_DMP;
+      ph.swX  = Math.max(-0.85, Math.min(0.85, ph.swX + ph.vX));
+      ph.swZ  = Math.max(-0.85, Math.min(0.85, ph.swZ + ph.vZ));
+      ph.spinY += ph.vSpinY;
+      // Squish spring
+      ph.vSquish += -ph.squish * 0.38;
+      ph.vSquish *= 0.68;
+      ph.squish = Math.max(0, ph.squish + ph.vSquish);
+    }
+
+    // ============ PUNCH ============
+    function tryPunch(cx, cy) {
+      const bagCW = transformVert([0, -BAG_H * 0.5, 0]);
+      const bagCP = project(bagCW);
+      const dx = cx - bagCP.x, dy = cy - bagCP.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const hitR = SCALE * bagRadius(0.45) * (FOV / (bagCW.z + FOV)) * 1.4;
+      if (dist > hitR) return;
+
+      const force = Math.max(0.25, 1.6 - dist / hitR) * 0.20;
+      ph.vX     += (dx / 130) * force;
+      ph.vZ     += (dy / 130) * force;
+      ph.vSpinY += (dx / 130) * force * 0.28;
+      ph.vSquish = 0.7;
+      hitFlash   = 1.0;
+
+      punchCount++;
+      if (punchCountEl) punchCountEl.textContent = punchCount;
+
+      const emojis = ['💥', '⚡', '✨', '💫', '🔥', '💪', '👊', '🌟'];
+      for (let i = 0; i < 11; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const spd = 2.5 + Math.random() * 5;
+        particles.push({
+          x: cx + (Math.random() - 0.5) * 16,
+          y: cy + (Math.random() - 0.5) * 16,
+          vx: Math.cos(a) * spd,
+          vy: Math.sin(a) * spd - 2,
+          life: 55 + Math.random() * 45,
+          maxLife: 100,
+          emoji: emojis[Math.floor(Math.random() * emojis.length)],
+          size: 16 + Math.floor(Math.random() * 14),
+        });
+      }
+    }
+
+    bagCanvas.addEventListener('click', e => {
+      const r = bagCanvas.getBoundingClientRect();
+      tryPunch(e.clientX - r.left, e.clientY - r.top);
+    });
+    bagCanvas.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const r = bagCanvas.getBoundingClientRect();
+      for (const t of e.changedTouches) tryPunch(t.clientX - r.left, t.clientY - r.top);
+    }, { passive: false });
+
+    // ============ LOOP ============
+    (function loop() {
+      updatePhysics();
+      render();
+      requestAnimationFrame(loop);
+    })();
   }
-
-  animate();
 }
 
 // End of module wrapper
