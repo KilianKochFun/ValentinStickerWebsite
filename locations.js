@@ -95,10 +95,33 @@ const locations = [
     description: "¡Un Valentin salvaje apareció!"
   },
   {
+    position: [4.603258, -74.067072],
+    image: 'img/StickerFunde/Südamerika.jpeg',
+    time: new Date("2026-03-14T02:03:00-05:00"),
+    finder: "Mathias",
+    title: "Kolumbien",
+    description: "Er hat florida vergessen"
+  },
+  {
+    position: [36.28819, -6.10675],
+    image: 'img/StickerFunde/Spanien.jpeg',
+    time: new Date("2026-03-23T00:00:00+01:00"),
+    finder: "Malte",
+    title: "Spanien",
+    description: "Am Surfen"
+  },
+  {
+    position: [43.28, 28.04],
+    image: 'img/StickerFunde/Bulgarien.jpeg',
+    time: new Date("2026-03-23T13:05:00+02:00"),
+    finder: "Mike mach dir mal die Schuhe zu",
+    title: "Goldstrand Partystadl",
+    description: "In einem bulgarischen Club in Warna."
+  },
+  {
     position: [35.6003302, 139.7204669],
     image: 'img/StickerFunde/Japan.jpg',
     time: new Date("2026-01-20T10:52:00+01:00"),
-    
     finder: 'Kilian',
     title: 'Valentinは日本にいる',
     description: 'その公園で子供たちはびっくりしそうね。草'
