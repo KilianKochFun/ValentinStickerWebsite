@@ -32,11 +32,11 @@ let locked   = false;
 function getHighscores() {
   try { return JSON.parse(localStorage.getItem('sqHighscores') || '[]'); } catch { return []; }
 }
-function saveHighscore(n) {
+function saveHighscore(n, name) {
   let hs = getHighscores();
-  hs.push({ score: n, date: new Date().toLocaleDateString('de-DE') });
+  hs.push({ score: n, name: name || '–', date: new Date().toLocaleDateString('de-DE') });
   hs.sort((a, b) => b.score - a.score);
-  localStorage.setItem('sqHighscores', JSON.stringify(hs.slice(0, 10)));
+  localStorage.setItem('sqHighscores', JSON.stringify(hs.slice(0, 5)));
   return hs;
 }
 function getBest() {
@@ -165,19 +165,31 @@ function nextRound() {
   }
 }
 
+// ── Save name & score ──────────────────────────────────────
+let pendingScore = 0;
+function saveName() {
+  const name = document.getElementById('sqNameInput').value.trim() || '–';
+  saveHighscore(pendingScore, name);
+  document.getElementById('sqNameSaveBtn').disabled = true;
+  document.getElementById('sqNameInput').disabled   = true;
+  renderHighscoreList();
+}
+
 // ── Game Over ─────────────────────────────────────────────
 function gameOver() {
-  // Hide game UI
   document.getElementById('sqCards').style.display    = 'none';
   document.getElementById('sqQuestion').style.display = 'none';
   document.getElementById('sqStreakBar').style.display = 'none';
 
-  const hs        = saveHighscore(streak);
-  const best      = hs[0].score;
-  const isNewBest = hs.filter(h => h.score === streak).length === 1 && streak === best && streak > 0;
+  pendingScore = streak;
+  const best      = Math.max(...getHighscores().map(h => h.score), streak);
+  const isNewBest = streak > 0 && streak >= best;
 
   document.getElementById('sqGoStreak').textContent = streak;
   document.getElementById('sqGoBest').textContent   = best;
+  document.getElementById('sqNameInput').value      = '';
+  document.getElementById('sqNameInput').disabled   = false;
+  document.getElementById('sqNameSaveBtn').disabled = false;
 
   let emoji = '😵', title = 'Game Over!', sub = '';
   if (streak === 0) {
@@ -250,13 +262,14 @@ function renderHighscoreList() {
     el.innerHTML = '<div class="sq-hs-empty">Noch kein Highscore – spiel los!</div>';
     return;
   }
-  el.innerHTML = hs.map((h, i) => {
-    const dotCount = Math.min(h.score, 10);
+  el.innerHTML = hs.slice(0, 5).map((h, i) => {
+    const dotCount = Math.min(h.score, 8);
     const dots     = '<img src="img/valentinSticker.webp" alt="s">'.repeat(dotCount);
-    const overflow = h.score > 10 ? `<span class="sq-hs-val" style="font-size:0.8rem">+${h.score-10}</span>` : '';
+    const overflow = h.score > 8 ? `<span class="sq-hs-val" style="font-size:0.8rem">+${h.score-8}</span>` : '';
     return `
       <div class="sq-hs-entry">
         <span class="sq-hs-rank">${medals[i] || (i+1) + '.'}</span>
+        <strong style="min-width:60px;color:#333">${h.name || '–'}</strong>
         <div class="sq-hs-icons">${dots}${overflow}</div>
         <span class="sq-hs-val">${h.score}</span>
         <span class="sq-hs-date">${h.date}</span>
@@ -265,67 +278,29 @@ function renderHighscoreList() {
   }).join('');
 }
 
-// ── Tiny confetti ──────────────────────────────────────────
-(function setupConfetti() {
-  const canvas  = document.getElementById('sq-confetti');
-  const ctx     = canvas.getContext('2d');
-  let particles = [];
-  let raf       = null;
-
-  function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+// ── DOM-based confetti (self-cleaning) ─────────────────────
+window.launchConfetti = function(n) {
+  for (let i = 0; i < n * 6; i++) {
+    const el = document.createElement('img');
+    el.src       = 'img/valentinSticker.webp';
+    el.className = 'sq-confetti-piece';
+    const size   = Math.random() * 24 + 18;
+    const dur    = Math.random() * 1.5 + 1.2;
+    const startX = Math.random() * 100;
+    const drift  = (Math.random() - 0.5) * 200;
+    el.style.cssText = `
+      left: ${startX}vw;
+      width: ${size}px;
+      height: ${size}px;
+      animation-duration: ${dur}s;
+      animation-delay: ${Math.random() * 0.4}s;
+      transform-origin: center;
+      transform: translateX(${drift}px);
+    `;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
   }
-  window.addEventListener('resize', resize);
-  resize();
-
-  const stickerImg = new Image();
-  stickerImg.src = 'img/valentinSticker.webp';
-
-  function spawnParticles(n) {
-    for (let i = 0; i < n; i++) {
-      const size = Math.random() * 28 + 18;
-      particles.push({
-        x:    Math.random() * canvas.width,
-        y:    -size,
-        vx:   (Math.random() - 0.5) * 5,
-        vy:   Math.random() * 3 + 2,
-        size: size,
-        rot:  Math.random() * 360,
-        rv:   (Math.random() - 0.5) * 6,
-        life: 1
-      });
-    }
-  }
-
-  function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles = particles.filter(p => p.life > 0.01);
-    particles.forEach(p => {
-      p.x   += p.vx;
-      p.y   += p.vy;
-      p.rot += p.rv;
-      p.vy  += 0.1;
-      p.life -= 0.013;
-      // remove once off screen or faded
-      if (p.y > canvas.height + p.size) p.life = 0;
-      ctx.save();
-      ctx.globalAlpha = p.life;
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot * Math.PI / 180);
-      ctx.drawImage(stickerImg, -p.size / 2, -p.size / 2, p.size, p.size);
-      ctx.restore();
-    });
-    if (particles.length) raf = requestAnimationFrame(animate);
-    else { cancelAnimationFrame(raf); ctx.clearRect(0, 0, canvas.width, canvas.height); }
-  }
-
-  window.launchConfetti = function(n) {
-    spawnParticles(n * 8);
-    cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(animate);
-  };
-})();
+};
 
 // ── Hamburger ─────────────────────────────────────────────
 document.getElementById('hamburgerBtn').addEventListener('click', () => {
