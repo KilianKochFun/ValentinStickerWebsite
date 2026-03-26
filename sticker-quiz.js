@@ -6,6 +6,20 @@
 // Aachen Mitte (Elisenbrunnen)
 const AACHEN = [50.7753, 6.0839];
 
+// ── Sounds ────────────────────────────────────────────────
+const SFX = {
+  hit:       new Audio('sound/Hit.mp3'),
+  lost:      new Audio('sound/Lost.mp3'),
+  highscore: new Audio('sound/Highscore.mp3'),
+};
+function playSound(name) {
+  try {
+    const s = SFX[name];
+    s.currentTime = 0;
+    s.play().catch(() => {});
+  } catch(e) {}
+}
+
 // ── Haversine distance in km ──────────────────────────────
 function haversine([lat1, lon1], [lat2, lon2]) {
   const R  = 6371;
@@ -148,7 +162,7 @@ function showNextBtn(isGameOver) {
   pendingGameOver = isGameOver;
   const auto = document.getElementById('sqAutoNext').checked;
   if (auto) {
-    setTimeout(() => nextRound(), 2000);
+    setTimeout(() => nextRound(), 500);
   } else {
     document.getElementById('sqNextBtn').classList.remove('hidden');
   }
@@ -225,8 +239,13 @@ function gameOver() {
     goStickers.appendChild(span);
   }
 
-  if (isNewBest) document.getElementById('sqNewHs').style.display = 'inline-block';
-  else document.getElementById('sqNewHs').style.display = 'none';
+  if (isNewBest) {
+    document.getElementById('sqNewHs').style.display = 'inline-block';
+    playSound('highscore');
+  } else {
+    document.getElementById('sqNewHs').style.display = 'none';
+    playSound('lost');
+  }
 
   // Always re-enable punch button for new score
   const punchBtn = document.getElementById('sqPunchBtn');
@@ -507,27 +526,7 @@ function initBag() {
     ph.vSquish+=-ph.squish*0.38; ph.vSquish*=0.68; ph.squish=Math.max(0,ph.squish+ph.vSquish);
   }
 
-  function playPunchSound(){
-    try {
-      const ac  = new (window.AudioContext || window.webkitAudioContext)();
-      // Low thud
-      const buf = ac.createBuffer(1, ac.sampleRate * 0.18, ac.sampleRate);
-      const d   = buf.getChannelData(0);
-      for(let i = 0; i < d.length; i++){
-        const t = i / ac.sampleRate;
-        d[i] = Math.random() * 2 - 1;                       // noise
-        d[i] *= Math.exp(-t * 38);                           // fast decay
-        d[i] += Math.sin(2 * Math.PI * 55 * t) * Math.exp(-t * 22) * 0.7; // low thud tone
-      }
-      const src    = ac.createBufferSource();
-      src.buffer   = buf;
-      const gain   = ac.createGain();
-      gain.gain.setValueAtTime(0.55, ac.currentTime);
-      src.connect(gain); gain.connect(ac.destination);
-      src.start();
-      src.onended = () => ac.close();
-    } catch(e) {}
-  }
+  function playPunchSound(){ playSound('hit'); }
 
   function tryPunch(cx,cy){
     if(punchesLeft<=0) return;
