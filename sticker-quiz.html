@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4caf50" />
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <title>Sticker-Quiz – Valentinsticker</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* ── Wrapper ──────────────────────────────────────────── */
+      .sq-wrapper {
+        flex: 1;
+        max-width: 900px;
+        margin: 24px auto 0;
+        padding: 0 16px 40px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      /* ── Points bar ───────────────────────────────────────── */
+      .sq-points-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #fff;
+        border: 2px solid var(--color-primary);
+        border-radius: 14px;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+        box-shadow: var(--box-shadow-light);
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .sq-points-label {
+        font-size: 0.8rem;
+        color: #888;
+        white-space: nowrap;
+      }
+      .sq-sticker-dots {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        flex: 1;
+      }
+      .sq-sticker-dot {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        opacity: 0;
+        transform: scale(0.3);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .sq-sticker-dot.visible {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .sq-dot-overflow {
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: var(--color-primary);
+        white-space: nowrap;
+      }
+      .sq-hs-badge {
+        font-size: 0.85rem;
+        color: #888;
+        white-space: nowrap;
+      }
+      .sq-hs-badge strong { color: #333; }
+
+      /* ── Question headline ────────────────────────────────── */
+      .sq-question {
+        text-align: center;
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 14px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 10px 16px;
+        border: 2px solid #eee;
+      }
+
+      /* ── Card grid ────────────────────────────────────────── */
+      .sq-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 14px;
+        align-items: start;
+      }
+      @media (max-width: 520px) {
+        .sq-cards { grid-template-columns: 1fr; }
+      }
+
+      /* ── Single card ──────────────────────────────────────── */
+      .sq-card {
+        border: 3px solid #ddd;
+        border-radius: 14px;
+        overflow: hidden;
+        cursor: pointer;
+        transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+        box-shadow: var(--box-shadow-light);
+        user-select: none;
+        background: #f5f5f5;
+        position: relative;
+      }
+      .sq-card:hover:not(.disabled) {
+        border-color: var(--color-primary);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(76,175,80,0.25);
+      }
+      /* Full image – max height, always fully visible */
+      .sq-card img {
+        width: 100%;
+        max-height: 38vh;
+        display: block;
+        object-fit: contain;
+      }
+      /* Distance overlay – shown after reveal */
+      .sq-card-dist {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: bold;
+        text-align: center;
+        padding: 6px 8px;
+        backdrop-filter: blur(2px);
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+      .sq-card-dist.show { opacity: 1; }
+
+      /* ── Card states ──────────────────────────────────────── */
+      .sq-card.correct { border-color: #2e7d32; animation: cardPop 0.35s ease; }
+      .sq-card.wrong   { border-color: #c62828; animation: cardShake 0.4s ease; }
+      .sq-card.correct .sq-card-dist { background: rgba(46,125,50,0.7); }
+      .sq-card.wrong   .sq-card-dist { background: rgba(198,40,40,0.7); }
+      .sq-card.disabled { cursor: default; }
+
+      @keyframes cardPop {
+        0%  { transform: scale(1); }
+        40% { transform: scale(1.05); }
+        100%{ transform: scale(1); }
+      }
+      @keyframes cardShake {
+        0%,100%{ transform: translateX(0); }
+        20%    { transform: translateX(-8px); }
+        40%    { transform: translateX(8px); }
+        60%    { transform: translateX(-5px); }
+        80%    { transform: translateX(5px); }
+      }
+
+      /* ── Auto-toggle ──────────────────────────────────────── */
+      .sq-auto-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 10px;
+      }
+      .sq-toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: #333;
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+        background: #fff;
+        border: 2px solid #ddd;
+        border-radius: 10px;
+        padding: 8px 14px;
+      }
+      .sq-toggle-label:hover { border-color: var(--color-primary); }
+      .sq-toggle-label input { display: none; }
+      .sq-toggle-track {
+        width: 36px;
+        height: 20px;
+        background: #ccc;
+        border-radius: 10px;
+        position: relative;
+        transition: background 0.2s;
+        flex-shrink: 0;
+      }
+      .sq-toggle-thumb {
+        position: absolute;
+        top: 3px; left: 3px;
+        width: 14px; height: 14px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      .sq-toggle-label input:checked + .sq-toggle-track { background: var(--color-primary); }
+      .sq-toggle-label input:checked + .sq-toggle-track .sq-toggle-thumb { transform: translateX(16px); }
+
+      /* ── Weiter button ────────────────────────────────────── */
+      .sq-next-btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        background: var(--color-primary);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin-bottom: 12px;
+        transition: background 0.2s, transform 0.15s;
+        box-shadow: 0 4px 12px rgba(76,175,80,0.3);
+        animation: fadeSlideIn 0.25s ease;
+      }
+      .sq-next-btn:hover { background: var(--color-primary-hover); transform: translateY(-2px); }
+      .sq-next-btn.hidden { display: none; }
+      @keyframes fadeSlideIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ── Toast ────────────────────────────────────────────── */
+      .sq-toast {
+        text-align: center;
+        font-size: 1rem;
+        font-weight: bold;
+        padding: 10px 14px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        min-height: 42px;
+      }
+      .sq-toast.show { opacity: 1; }
+      .sq-toast.ok  { background: #e8f5e9; color: #2e7d32; }
+      .sq-toast.bad { background: #ffebee; color: #c62828; }
+
+      /* ── Game Over ────────────────────────────────────────── */
+      .sq-gameover {
+        display: none;
+        background: #fff;
+        border: 3px solid var(--color-primary);
+        border-radius: 16px;
+        padding: 30px 22px;
+        text-align: center;
+        box-shadow: var(--box-shadow);
+      }
+      .sq-gameover.visible { display: block; }
+      .sq-gameover-emoji { font-size: 3rem; }
+      .sq-gameover h2 {
+        color: var(--color-primary); margin: 8px 0 4px; font-size: 1.5rem;
+      }
+      .sq-gameover-sub { color: #666; margin: 0 0 20px; font-size: 0.9rem; }
+      .sq-result-row {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+      }
+      .sq-result-box {
+        background: #f5f5f5;
+        border-radius: 12px;
+        padding: 14px 22px;
+        min-width: 90px;
+      }
+      .sq-result-box.hl {
+        background: #e8f5e9;
+        border: 2px solid var(--color-primary);
+      }
+      /* Points collected as sticker icons in game-over */
+      .sq-result-stickers {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+        margin-bottom: 18px;
+      }
+      .sq-result-stickers img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+      }
+      .sq-result-val { font-size: 2rem; font-weight: bold; color: #333; }
+      .sq-result-box.hl .sq-result-val { color: var(--color-primary); }
+      .sq-result-lbl { font-size: 0.78rem; color: #888; margin-top: 2px; }
+
+      .sq-new-hs {
+        display: inline-block;
+        background: linear-gradient(135deg,#ffd700,#ffaa00);
+        color: #5d3a00;
+        border-radius: 24px;
+        padding: 7px 18px;
+        font-weight: bold;
+        margin-bottom: 16px;
+        font-size: 0.95rem;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes pulse { 0%,100%{transform:scale(1)}50%{transform:scale(1.05)} }
+
+      .sq-restart-btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        background: var(--color-primary);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+        box-shadow: 0 4px 12px rgba(76,175,80,0.3);
+      }
+      .sq-restart-btn:hover {
+        background: var(--color-primary-hover);
+        transform: translateY(-2px);
+      }
+
+      /* ── Highscore list ───────────────────────────────────── */
+      .sq-hs-section {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-top: 20px;
+        box-shadow: var(--box-shadow-light);
+      }
+      .sq-hs-section h3 { margin: 0 0 10px; color: var(--color-primary); font-size: 1rem; }
+      .sq-hs-entry {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+      }
+      .sq-hs-entry:last-child { border-bottom: none; }
+      .sq-hs-rank { font-size: 1.1rem; min-width: 26px; }
+      .sq-hs-icons { display: flex; gap: 3px; flex-wrap: wrap; flex: 1; }
+      .sq-hs-icons img { width: 20px; height: 20px; object-fit: contain; }
+      .sq-hs-val { font-weight: bold; color: var(--color-primary); }
+      .sq-hs-date { color: #aaa; font-size: 0.76rem; }
+      .sq-hs-empty { color: #bbb; text-align: center; padding: 12px 0; font-size: 0.9rem; }
+
+      /* ── Confetti ─────────────────────────────────────────── */
+      #sq-confetti {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 9000;
+      }
+
+      /* ── Banner btn ───────────────────────────────────────── */
+      #sqHomeBtn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        background-color: var(--color-primary);
+        color: #fff;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+      }
+      #sqHomeBtn:hover { background-color: var(--color-primary-hover); transform: scale(1.05); }
+
+      /* ── Footer ───────────────────────────────────────────── */
+      .footer {
+        margin-top: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="banner">
+      <div class="banner-content">
+        <a href="index.html">
+          <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        </a>
+        <h1>Sticker-Quiz</h1>
+        <nav class="button-nav">
+          <button id="sqHomeBtn" onclick="window.location.href='index.html'">🏠 Zur Karte</button>
+        </nav>
+        <button id="hamburgerBtn" class="hamburger-btn">☰</button>
+      </div>
+      <nav id="mobileMenu" class="mobile-menu hidden">
+        <button onclick="window.location.href='index.html'">🏠 Zur Karte</button>
+      </nav>
+    </header>
+
+    <canvas id="sq-confetti"></canvas>
+
+    <div class="sq-wrapper">
+
+      <!-- Auto-weiter toggle -->
+      <div class="sq-auto-row">
+        <label class="sq-toggle-label">
+          <input type="checkbox" id="sqAutoNext" />
+          <span class="sq-toggle-track"><span class="sq-toggle-thumb"></span></span>
+          Automatisch weiter
+        </label>
+      </div>
+
+      <!-- Points bar -->
+      <div class="sq-points-bar" id="sqStreakBar">
+        <span class="sq-points-label">Punkte:</span>
+        <div class="sq-sticker-dots" id="sqDots"></div>
+        <span class="sq-hs-badge">Highscore: <strong id="sqHsDisplay">0</strong></span>
+      </div>
+
+      <!-- Question -->
+      <div class="sq-question" id="sqQuestion">
+        Welcher Sticker wurde <strong>weiter von Aachen</strong> gefunden?
+      </div>
+
+      <!-- Toast -->
+      <div class="sq-toast" id="sqToast"></div>
+
+      <!-- Weiter button (shown after answer) -->
+      <button class="sq-next-btn hidden" id="sqNextBtn" onclick="nextRound()">Weiter →</button>
+
+      <!-- Cards -->
+      <div class="sq-cards" id="sqCards">
+        <div class="sq-card" id="sqCardA" onclick="pick(0)">
+          <img id="sqImgA" src="" alt="" />
+          <div class="sq-card-dist" id="sqDistA"></div>
+        </div>
+        <div class="sq-card" id="sqCardB" onclick="pick(1)">
+          <img id="sqImgB" src="" alt="" />
+          <div class="sq-card-dist" id="sqDistB"></div>
+        </div>
+      </div>
+
+      <!-- Game Over -->
+      <div class="sq-gameover" id="sqGameover">
+        <div class="sq-gameover-emoji" id="sqGoEmoji">😵</div>
+        <h2 id="sqGoTitle">Game Over!</h2>
+        <p class="sq-gameover-sub" id="sqGoSub"></p>
+        <div class="sq-result-row">
+          <div class="sq-result-box hl">
+            <div class="sq-result-val" id="sqGoStreak">0</div>
+            <div class="sq-result-lbl">Punkte</div>
+          </div>
+          <div class="sq-result-box">
+            <div class="sq-result-val" id="sqGoBest">0</div>
+            <div class="sq-result-lbl">Highscore</div>
+          </div>
+        </div>
+        <div class="sq-result-stickers" id="sqGoStickers"></div>
+        <div id="sqNewHs" style="display:none" class="sq-new-hs">🎉 Neuer Highscore!</div>
+        <button class="sq-restart-btn" onclick="startGame()">Nochmal spielen 🔄</button>
+      </div>
+
+      <!-- Highscore list -->
+      <div class="sq-hs-section">
+        <h3>🏆 Highscores</h3>
+        <div id="sqHsList"></div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a> |
+      <a href="index.html">Zur Sticker-Karte</a>
+    </footer>
+
+    <script src="locations.js"></script>
+    <script src="sticker-quiz.js"></script>
+  </body>
+</html>

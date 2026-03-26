@@ -52,7 +52,8 @@ body {
 #toggleViewBtn,
 #toggleAnimationBtn,
 #settingsBtn,
-#toggleCursorBtn {
+#toggleCursorBtn,
+#quizNavBtn {
   padding: 6px 12px;
   border: none;
   border-radius: 5px;
@@ -138,7 +139,8 @@ body {
 #toggleAnimationBtn:hover,
 #toggleViewBtn:hover,
 #settingsBtn:hover,
-#toggleCursorBtn:hover {
+#toggleCursorBtn:hover,
+#quizNavBtn:hover {
   background-color: var(--color-primary-hover);
   transform: scale(1.05);
 }
