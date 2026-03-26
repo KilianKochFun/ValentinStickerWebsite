@@ -400,6 +400,67 @@
       .sq-name-save-btn:hover { background: var(--color-primary-hover); }
       .sq-name-save-btn:disabled { background: #aaa; cursor: default; }
 
+      /* ── Punch button ─────────────────────────────────────── */
+      .sq-punch-btn {
+        display: block;
+        width: 100%;
+        padding: 13px;
+        background: #c62828;
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.05rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.2s, transform 0.2s;
+      }
+      .sq-punch-btn:hover { background: #b71c1c; transform: translateY(-2px); }
+      .sq-punch-btn:disabled { background: #aaa; cursor: default; transform: none; }
+
+      /* ── Punching bag section ─────────────────────────────── */
+      .sq-punch-section {
+        margin-top: 20px;
+        background: #fff;
+        border: 3px solid #c62828;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--box-shadow);
+      }
+      .sq-punch-section.hidden { display: none; }
+      .sq-punch-header {
+        padding: 14px 20px 0;
+        text-align: center;
+      }
+      .sq-punch-header h3 { margin: 0 0 4px; color: #c62828; font-size: 1.2rem; }
+      .sq-punch-remaining {
+        margin: 0 0 10px;
+        color: #555;
+        font-size: 0.9rem;
+        font-weight: bold;
+      }
+      .punching-bag-canvas {
+        display: block;
+        width: 100%;
+        max-width: 500px;
+        height: 420px;
+        cursor: crosshair;
+        margin: 0 auto;
+      }
+      .sq-punch-back-btn {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        background: transparent;
+        color: #888;
+        border: none;
+        border-top: 2px solid #eee;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .sq-punch-back-btn:hover { background: #f5f5f5; }
+
       /* ── Banner btn ───────────────────────────────────────── */
       #sqHomeBtn {
         padding: 6px 12px;
@@ -498,6 +559,17 @@
           <button class="sq-name-save-btn" id="sqNameSaveBtn" onclick="saveName()">Speichern</button>
         </div>
         <button class="sq-restart-btn" onclick="startGame()">Nochmal spielen 🔄</button>
+        <button class="sq-punch-btn" id="sqPunchBtn" onclick="openPunchingBag()">👊 Valentin schlagen</button>
+      </div>
+
+      <!-- Punching Bag Section (hidden until earned) -->
+      <div id="sqPunchSection" class="sq-punch-section hidden">
+        <div class="sq-punch-header">
+          <h3>👊 Valentin schlagen</h3>
+          <p id="sqPunchRemaining" class="sq-punch-remaining"></p>
+        </div>
+        <canvas id="bagCanvas" class="punching-bag-canvas"></canvas>
+        <button class="sq-punch-back-btn" onclick="closePunchingBag()">← Zurück zum Quiz</button>
       </div>
 
       <!-- Highscore list -->

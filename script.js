@@ -792,7 +792,7 @@ if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleVie
 
 // ============ 3D PUNCHING BAG ============
 {
-  const bagCanvas = document.getElementById('bagCanvas');
+  const bagCanvas = null; // moved to sticker-quiz.html
   if (bagCanvas) {
     const ctx = bagCanvas.getContext('2d');
     const punchCountEl = document.getElementById('punchCount');
