@@ -79,7 +79,7 @@ function revealDistances() {
   ['A','B'].forEach((c, i) => {
     const s = i === 0 ? pairA : pairB;
     const el = document.getElementById('sqDist' + c);
-    el.textContent = Math.round(s.dist) + ' km von Aachen';
+    el.textContent = (s.dist < 10 ? s.dist.toFixed(2) : s.dist < 100 ? s.dist.toFixed(1) : Math.round(s.dist)) + ' km von Aachen Mitte';
     el.classList.add('show');
   });
 }
@@ -307,6 +307,8 @@ function renderHighscoreList() {
       p.rot += p.rv;
       p.vy  += 0.1;
       p.life -= 0.013;
+      // remove once off screen or faded
+      if (p.y > canvas.height + p.size) p.life = 0;
       ctx.save();
       ctx.globalAlpha = p.life;
       ctx.translate(p.x, p.y);
