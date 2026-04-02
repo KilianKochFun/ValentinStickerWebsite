@@ -119,6 +119,14 @@ const locations = [
     description: "In einem bulgarischen Club in Warna."
   },
   {
+    position: [50.7787279, 6.0801722],
+    image: 'img/StickerFunde/Geschändet.jpeg',
+    time: new Date("2026-03-30T22:10:00+02:00"),
+    finder: "Tim",
+    title: "In der Bib",
+    description: "Geschändet."
+  },
+  {
     position: [35.6003302, 139.7204669],
     image: 'img/StickerFunde/Japan.jpg',
     time: new Date("2026-01-20T10:52:00+01:00"),
