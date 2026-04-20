@@ -133,5 +133,13 @@ const locations = [
     finder: 'Kilian',
     title: 'Valentinは日本にいる',
     description: 'その公園で子供たちはびっくりしそうね。草'
+  },
+  {
+    position: [48.8594, 2.2933],
+    image: 'img/StickerFunde/pari.jpeg',
+    time: new Date("2026-04-14T18:24:00+02:00"),
+    finder: "Glol",
+    title: "Paris",
+    description: "J'ai un autocollant dans mon pantalon. Pamplemousse!"
   }
 ];
