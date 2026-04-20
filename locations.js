@@ -139,7 +139,7 @@ const locations = [
     image: 'img/StickerFunde/pari.jpeg',
     time: new Date("2026-04-14T18:24:00+02:00"),
     finder: "Glol",
-    title: "Paris",
+    title: "Stigga in Paris",
     description: "J'ai un autocollant dans mon pantalon. Pamplemousse!"
   }
 ];
