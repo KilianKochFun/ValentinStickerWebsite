@@ -107,7 +107,6 @@ function pick(i) {
     streak++;
     scoreEl.textContent = streak;
     toast("✅ Richtig!", "ok");
-    playSound("hit");
     if (autoNextEl?.checked) {
       setTimeout(nextRound, 700);
     } else {
@@ -117,7 +116,6 @@ function pick(i) {
     buttons[i].classList.add("wrong");
     buttons[correct].classList.add("correct");
     toast("❌ Falsch!", "bad");
-    playSound("lost");
     setTimeout(gameOver, 900);
   }
 }
@@ -148,6 +146,7 @@ async function gameOver() {
   // Beim allerersten Öffnen übernimmt initPunchingBag das über initialPunches.
   if (bag) bag.setPunches(streak);
   if (isNewBest) playSound("highscore");
+  else playSound("lost");
 
   goStatus.hidden = true;
   goStatus.className = "sq-save-status";
