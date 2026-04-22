@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quizze – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="page-sticky-footer">
+    <header class="banner">
+      <div class="banner-content">
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
+        <h1>Quizze</h1>
+        <nav class="button-nav">
+          <button onclick="window.location.href='users'">👥 Nutzer</button>
+          <button onclick="window.location.href='index'">🏠 Zur Karte</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="quiz-hub">
+      <p style="color:#555;margin:0 0 18px;">
+        Drei Quizze mit den gesammelten Stickern. Spielen geht immer – für den globalen
+        Highscore musst du <a href="login">eingeloggt</a> sein.
+      </p>
+
+      <div class="quiz-tiles">
+        <a class="quiz-tile" href="sticker-quiz">
+          <h3>📍 Entfernung</h3>
+          <p>Welcher von zwei Stickern wurde weiter von Aachen gefunden? Bis zum ersten Fehler.</p>
+          <div class="quiz-tile-top" id="topLocation">Top-Score: <strong>–</strong></div>
+        </a>
+        <a class="quiz-tile" href="sticker-quiz-description">
+          <h3>📝 Beschreibung → Sticker</h3>
+          <p>Du bekommst eine Beschreibung. Welcher von drei Stickern passt dazu?</p>
+          <div class="quiz-tile-top" id="topDescription">Top-Score: <strong>–</strong></div>
+        </a>
+        <a class="quiz-tile" href="sticker-quiz-title">
+          <h3>🏷️ Titel → Sticker</h3>
+          <p>Du bekommst einen Titel. Welcher von drei Stickern gehört dazu?</p>
+          <div class="quiz-tile-top" id="topTitle">Top-Score: <strong>–</strong></div>
+        </a>
+      </div>
+
+      <h2>🏆 Highscores</h2>
+      <div class="quiz-hub-hs">
+        <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Entfernung</h3>
+        <div id="hsLocation"></div>
+      </div>
+      <div class="quiz-hub-hs">
+        <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Beschreibung → Sticker</h3>
+        <div id="hsDescription"></div>
+      </div>
+      <div class="quiz-hub-hs">
+        <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Titel → Sticker</h3>
+        <div id="hsTitle"></div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a> |
+      <a href="index">Zur Sticker-Karte</a>
+    </footer>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { fetchTopScores } from "./assets/js/quiz.js";
+      import { escapeHtml } from "./assets/js/sticker-view.js";
+
+      const medals = ['🥇','🥈','🥉'];
+      function renderList(containerId, scores) {
+        const el = document.getElementById(containerId);
+        if (!scores.length) {
+          el.innerHTML = '<div class="sq-hs-empty">Noch keine Einträge.</div>';
+          return;
+        }
+        el.innerHTML = scores.map((s, i) => {
+          const date = new Date(s.played_at).toLocaleDateString('de-DE');
+          return `
+            <div class="sq-hs-entry">
+              <span class="sq-hs-rank">${medals[i] || (i+1)+'.'}</span>
+              <a class="sq-hs-name" href="profile?id=${encodeURIComponent(s.user_id)}">${escapeHtml(s.display_name)}</a>
+              <span class="sq-hs-val" style="margin-left:auto;">${s.score}</span>
+              <span class="sq-hs-date">${date}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function renderTile(tileId, scores) {
+        const el = document.getElementById(tileId);
+        if (!el) return;
+        if (!scores.length) { el.innerHTML = 'Top-Score: <strong>noch keiner</strong>'; return; }
+        const top = scores[0];
+        el.innerHTML = `Top-Score: <strong>${top.score}</strong> – ${escapeHtml(top.display_name)}`;
+      }
+
+      const [loc, desc, tit] = await Promise.all([
+        fetchTopScores('location', 10),
+        fetchTopScores('description', 10),
+        fetchTopScores('title', 10),
+      ]);
+      renderList('hsLocation', loc);
+      renderList('hsDescription', desc);
+      renderList('hsTitle', tit);
+      renderTile('topLocation', loc);
+      renderTile('topDescription', desc);
+      renderTile('topTitle', tit);
+    </script>
+  </body>
+</html>

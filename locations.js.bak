@@ -1,7 +1,7 @@
 const locations = [
   {
     position: [50.77580555555556, 6.075638888888888],
-    image: 'img/StickerFunde/ValentinBäcker.webp',
+    image: 'img/StickerFunde/ValentinBaecker.webp',
     // Berlin time (CET)
     time: new Date("2025-03-23T12:20:00+01:00"),
     finder: "Kilian",
@@ -96,7 +96,7 @@ const locations = [
   },
   {
     position: [4.603258, -74.067072],
-    image: 'img/StickerFunde/Südamerika.jpeg',
+    image: 'img/StickerFunde/Suedamerika.jpeg',
     time: new Date("2026-03-14T02:03:00-05:00"),
     finder: "Mathias",
     title: "Kolumbien",
@@ -120,7 +120,7 @@ const locations = [
   },
   {
     position: [50.7787279, 6.0801722],
-    image: 'img/StickerFunde/Geschändet.jpeg',
+    image: 'img/StickerFunde/Geschaendet.jpeg',
     time: new Date("2026-03-30T22:10:00+02:00"),
     finder: "Tim",
     title: "In der Bib",

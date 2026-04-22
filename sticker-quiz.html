@@ -482,17 +482,19 @@
   <body>
     <header class="banner">
       <div class="banner-content">
-        <a href="index.html">
+        <a href="index">
           <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
         </a>
         <h1>Sticker-Quiz</h1>
         <nav class="button-nav">
-          <button id="sqHomeBtn" onclick="window.location.href='index.html'">🏠 Zur Karte</button>
+          <button id="sqQuizHubBtn" onclick="window.location.href='quiz'">🎯 Andere Quizze</button>
+          <button id="sqHomeBtn" onclick="window.location.href='index'">🏠 Zur Karte</button>
         </nav>
         <button id="hamburgerBtn" class="hamburger-btn">☰</button>
       </div>
       <nav id="mobileMenu" class="mobile-menu hidden">
-        <button onclick="window.location.href='index.html'">🏠 Zur Karte</button>
+        <button onclick="window.location.href='quiz'">🎯 Andere Quizze</button>
+        <button onclick="window.location.href='index'">🏠 Zur Karte</button>
       </nav>
     </header>
 
@@ -554,10 +556,7 @@
         </div>
         <div class="sq-result-stickers" id="sqGoStickers"></div>
         <div id="sqNewHs" style="display:none" class="sq-new-hs">🎉 Neuer Highscore!</div>
-        <div class="sq-name-row">
-          <input class="sq-name-input" id="sqNameInput" type="text" maxlength="20" placeholder="Dein Name..." />
-          <button class="sq-name-save-btn" id="sqNameSaveBtn" onclick="saveName()">Speichern</button>
-        </div>
+        <p id="sqSaveStatus" class="sq-save-status" hidden></p>
         <button class="sq-restart-btn" onclick="startGame()">Nochmal spielen 🔄</button>
         <button class="sq-punch-btn" id="sqPunchBtn" onclick="openPunchingBag()">👊 Valentin schlagen</button>
       </div>
@@ -582,10 +581,18 @@
     <footer class="footer">
       <a href="impressum">Impressum</a> |
       <a href="datenschutz">Datenschutz</a> |
-      <a href="index.html">Zur Sticker-Karte</a>
+      <a href="index">Zur Sticker-Karte</a>
     </footer>
 
-    <script src="locations.js"></script>
-    <script src="sticker-quiz.js"></script>
+    <script type="module">
+      // ES-Module-Bridge: exponiert die Quiz/Auth-Helfer als window.sqQuiz, damit
+      // das klassische sticker-quiz.js (kein Module) sie via window aufrufen kann.
+      import { submitQuizRun, fetchTopScores, fetchUserBest } from "./assets/js/quiz.js";
+      import { currentUser, currentProfile } from "./assets/js/supabase-client.js";
+      window.sqQuiz = { submitQuizRun, fetchTopScores, fetchUserBest, currentUser, currentProfile };
+      window.dispatchEvent(new Event("sq-quiz-ready"));
+    </script>
+    <script src="assets/js/config-global.js"></script>
+    <script src="assets/js/bootstrap.js" data-main="sticker-quiz.js"></script>
   </body>
 </html>

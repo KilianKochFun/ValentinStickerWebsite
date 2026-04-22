@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Titel-Quiz – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="page-sticky-footer">
+    <header class="banner">
+      <div class="banner-content">
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
+        <h1>Titel → Sticker</h1>
+        <nav class="button-nav">
+          <button onclick="window.location.href='quiz'">🎯 Andere Quizze</button>
+          <button onclick="window.location.href='index'">🏠 Karte</button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="gq-wrapper">
+      <div class="sq-auto-row">
+        <label class="sq-toggle-label">
+          <input type="checkbox" id="gqAutoNext" />
+          <span class="sq-toggle-track"><span class="sq-toggle-thumb"></span></span>
+          Automatisch weiter
+        </label>
+      </div>
+
+      <div class="sq-points-bar">
+        <span class="sq-points-label">Punkte:</span>
+        <strong id="gqScore" style="color:var(--color-primary);font-size:1.4rem;">0</strong>
+        <span class="sq-hs-badge" style="margin-left:auto;">Mein Bestwert: <strong id="gqMyBest">0</strong></span>
+      </div>
+
+      <div id="gqPlayArea">
+        <div class="gq-clue title" id="gqClue">
+          <h2>Titel:</h2>
+          <p id="gqClueText">Lade…</p>
+        </div>
+        <div class="sq-toast" id="gqToast"></div>
+        <button class="sq-next-btn hidden" id="gqNextBtn">Weiter →</button>
+        <div class="gq-options" id="gqOptions"></div>
+      </div>
+
+      <div class="sq-gameover" id="gqGameover">
+        <div class="sq-gameover-emoji">🎯</div>
+        <h2>Runde vorbei!</h2>
+        <div class="sq-result-row">
+          <div class="sq-result-box hl">
+            <div class="sq-result-val" id="gqGoScore">0</div>
+            <div class="sq-result-lbl">Punkte</div>
+          </div>
+          <div class="sq-result-box">
+            <div class="sq-result-val" id="gqGoBest">0</div>
+            <div class="sq-result-lbl">Mein Bestwert</div>
+          </div>
+        </div>
+        <p id="gqGoStatus" class="sq-save-status" hidden></p>
+        <button class="sq-restart-btn" id="gqRestartBtn">Nochmal spielen 🔄</button>
+        <button class="sq-punch-btn" id="gqPunchBtn">👊 Valentin schlagen</button>
+      </div>
+
+      <!-- Punching Bag (erscheint nach Klick auf 👊-Button) -->
+      <div id="gqPunchSection" class="sq-punch-section hidden">
+        <div class="sq-punch-header">
+          <h3>👊 Valentin schlagen</h3>
+          <p id="gqPunchRemaining" class="sq-punch-remaining"></p>
+        </div>
+        <canvas id="gqBagCanvas" class="punching-bag-canvas"></canvas>
+        <button class="sq-punch-back-btn" id="gqPunchBack">← Zurück zum Ergebnis</button>
+      </div>
+
+      <div class="sq-hs-section">
+        <h3>🏆 Highscores</h3>
+        <div id="gqHsList"></div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a> |
+      <a href="quiz">Alle Quizze</a>
+    </footer>
+
+    <script>window.QUIZ_MODE = "title";</script>
+    <script src="assets/js/config-global.js"></script>
+    <script type="module" src="./assets/js/guess-quiz.js"></script>
+  </body>
+</html>

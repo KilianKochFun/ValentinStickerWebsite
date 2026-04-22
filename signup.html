@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registrieren – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="banner">
+      <div class="banner-content">
+        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <h1>Registrieren</h1>
+        <nav class="button-nav" style="margin-left: auto;">
+          <button onclick="window.location.href='index'">🏠 Zurück</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="auth-container">
+      <form id="signupForm" class="auth-form">
+        <label>
+          Email
+          <input type="email" name="email" required autocomplete="email" />
+        </label>
+        <label>
+          Passwort <small>(mindestens 10 Zeichen)</small>
+          <input type="password" name="password" required minlength="10" autocomplete="new-password" />
+        </label>
+        <label>
+          Anzeigename
+          <input type="text" name="display_name" required minlength="2" maxlength="40" />
+        </label>
+
+        <fieldset class="legacy-claim" id="legacyClaimBox" hidden>
+          <legend>Bist du jemand aus der alten Finder-Liste?</legend>
+          <label class="legacy-option">
+            <input type="radio" name="legacy_match" value="" checked />
+            Nein, ich bin neu hier.
+          </label>
+          <div id="legacyOptions"></div>
+          <p class="auth-hint">
+            Falls du schon früher Sticker eingeschickt hast, wähle deinen alten
+            Finder-Namen. Nach der Registrierung werden sie dir als Admin zugeordnet.
+          </p>
+        </fieldset>
+
+        <label>
+          Invite-Code
+          <input type="text" name="code" required minlength="8" maxlength="32" pattern="[A-Za-z0-9\-]{8,32}" autocapitalize="characters" style="text-transform:uppercase" />
+        </label>
+
+        <button type="submit">Konto erstellen</button>
+        <p id="signupError" class="auth-error" hidden></p>
+        <p class="auth-footer">
+          Schon einen Account? <a href="login">Zum Login</a>
+        </p>
+      </form>
+    </main>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { signupWithInvite, listUnclaimedLegacyNames } from "./assets/js/auth.js";
+      import { supabase } from "./assets/js/supabase-client.js";
+
+      const form = document.getElementById("signupForm");
+      const err = document.getElementById("signupError");
+      const legacyBox = document.getElementById("legacyClaimBox");
+      const legacyOptions = document.getElementById("legacyOptions");
+
+      // Legacy-Namen als Vorschlag anzeigen
+      try {
+        const names = await listUnclaimedLegacyNames();
+        if (names.length) {
+          legacyBox.hidden = false;
+          legacyOptions.innerHTML = names.map((n) => `
+            <label class="legacy-option">
+              <input type="radio" name="legacy_match" value="${n.replace(/"/g, "&quot;")}" />
+              Ja, ich bin ${n}.
+            </label>
+          `).join("");
+        }
+      } catch { /* bei Netzwerkfehler einfach ausblenden */ }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        err.hidden = true;
+        const data = new FormData(form);
+        try {
+          const result = await signupWithInvite({
+            email: data.get("email"),
+            password: data.get("password"),
+            display_name: data.get("display_name"),
+            code: data.get("code"),
+            legacy_match: data.get("legacy_match"),
+          });
+          if (result.claimed_stickers > 0) {
+            alert(`${result.claimed_stickers} alte Sticker-Fund(e) wurden dir zugeordnet.`);
+          }
+          window.location.href = "index";
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+        }
+      });
+    </script>
+  </body>
+</html>

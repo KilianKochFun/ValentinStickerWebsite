@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="banner">
+      <div class="banner-content">
+        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <h1>Login</h1>
+        <nav class="button-nav" style="margin-left: auto;">
+          <button onclick="window.location.href='index'">🏠 Zurück</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="auth-container">
+      <form id="loginForm" class="auth-form">
+        <label>
+          Email
+          <input type="email" name="email" required autocomplete="email" />
+        </label>
+        <label>
+          Passwort
+          <input type="password" name="password" required autocomplete="current-password" />
+        </label>
+        <button type="submit">Einloggen</button>
+        <p id="loginError" class="auth-error" hidden></p>
+        <p class="auth-footer">
+          Noch keinen Account? <a href="signup">Mit Invite-Code registrieren</a>
+        </p>
+      </form>
+    </main>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { login } from "./assets/js/auth.js";
+      const form = document.getElementById("loginForm");
+      const err = document.getElementById("loginError");
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        err.hidden = true;
+        const data = new FormData(form);
+        try {
+          await login(data.get("email"), data.get("password"));
+          window.location.href = "index";
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+        }
+      });
+    </script>
+  </body>
+</html>

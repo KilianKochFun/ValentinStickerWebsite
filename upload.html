@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sticker hochladen – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+  </head>
+  <body>
+    <header class="banner">
+      <div class="banner-content">
+        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <h1>Sticker hochladen</h1>
+        <nav class="button-nav" style="margin-left: auto;">
+          <button onclick="window.location.href='index'">🏠 Zurück</button>
+          <button id="logoutBtn">Logout</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="auth-container">
+      <form id="uploadForm" class="auth-form" enctype="multipart/form-data">
+        <label>
+          Foto <small>(JPEG, PNG oder WebP – max. 5 MB)</small>
+          <input type="file" name="file" id="fileInput" accept="image/jpeg,image/png,image/webp" required />
+        </label>
+        <img id="uploadPreview" class="upload-preview" alt="" hidden />
+
+        <label>
+          Titel
+          <input type="text" name="title" maxlength="120" required />
+        </label>
+
+        <label>
+          Beschreibung
+          <textarea name="description" rows="3" maxlength="500"></textarea>
+        </label>
+
+        <label>
+          Standort <small>(auf die Karte klicken, Marker ziehen, oder Felder darunter tippen)</small>
+        </label>
+        <div id="pickMap" class="pick-map"></div>
+        <div class="form-row">
+          <label>
+            Breitengrad
+            <input type="number" name="latitude" step="any" required placeholder="50.7753" />
+          </label>
+          <label>
+            Längengrad
+            <input type="number" name="longitude" step="any" required placeholder="6.0839" />
+          </label>
+        </div>
+        <button type="button" id="locateBtn" class="secondary-btn">📍 Meinen Standort verwenden</button>
+
+        <label>
+          Fundzeitpunkt
+          <input type="datetime-local" name="found_at" required />
+        </label>
+
+        <button type="submit">Hochladen</button>
+        <p id="uploadError" class="auth-error" hidden></p>
+        <p id="uploadOk" class="auth-ok" hidden>Hochgeladen!</p>
+      </form>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { currentUser } from "./assets/js/supabase-client.js";
+      import { logout } from "./assets/js/auth.js";
+      import { uploadSticker } from "./assets/js/upload.js";
+      import { createMapPicker } from "./assets/js/map-picker.js";
+
+      if (!(await currentUser())) {
+        window.location.href = "login";
+      }
+
+      document.getElementById("logoutBtn").addEventListener("click", async () => {
+        await logout();
+        window.location.href = "index";
+      });
+
+      const form = document.getElementById("uploadForm");
+      const err = document.getElementById("uploadError");
+      const ok = document.getElementById("uploadOk");
+      const locateBtn = document.getElementById("locateBtn");
+      const fileInput = document.getElementById("fileInput");
+      const preview = document.getElementById("uploadPreview");
+
+      let previewUrl = null;
+      fileInput.addEventListener("change", () => {
+        if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+        const f = fileInput.files?.[0];
+        if (!f) { preview.hidden = true; preview.src = ""; return; }
+        previewUrl = URL.createObjectURL(f);
+        preview.src = previewUrl;
+        preview.hidden = false;
+      });
+
+      // Default auf jetzt
+      const now = new Date();
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      form.found_at.value = now.toISOString().slice(0, 16);
+
+      // Karten-Picker: Start auf Aachen. onChange füllt die Felder.
+      let syncingFromMap = false;
+      const picker = createMapPicker("pickMap", {
+        lat: 50.7763, lng: 6.0836, zoom: 5,
+        onChange: (lat, lng) => {
+          syncingFromMap = true;
+          form.latitude.value = lat.toFixed(6);
+          form.longitude.value = lng.toFixed(6);
+          syncingFromMap = false;
+        },
+      });
+
+      // Manuelle Eingabe in die Felder → Marker + Karte mitziehen.
+      function syncFromFields(fly) {
+        if (syncingFromMap) return;
+        const lat = parseFloat(form.latitude.value);
+        const lng = parseFloat(form.longitude.value);
+        if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+          picker.setPoint(lat, lng, { fly });
+        }
+      }
+      form.latitude.addEventListener("change", () => syncFromFields(true));
+      form.longitude.addEventListener("change", () => syncFromFields(true));
+
+      locateBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => picker.setPoint(pos.coords.latitude, pos.coords.longitude, { fly: true }),
+          () => { err.textContent = "Standort konnte nicht ermittelt werden."; err.hidden = false; }
+        );
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        err.hidden = true; ok.hidden = true;
+        const data = new FormData(form);
+        try {
+          await uploadSticker({
+            file: data.get("file"),
+            title: data.get("title"),
+            description: data.get("description"),
+            latitude: parseFloat(data.get("latitude")),
+            longitude: parseFloat(data.get("longitude")),
+            found_at: new Date(data.get("found_at")).toISOString(),
+          });
+          ok.hidden = false;
+          form.reset();
+          picker.clear();
+          if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+          preview.hidden = true; preview.src = "";
+          form.found_at.value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+        }
+      });
+    </script>
+  </body>
+</html>

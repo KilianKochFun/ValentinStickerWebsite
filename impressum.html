@@ -114,18 +114,18 @@
       <p>
         Die interaktive Karte wird automatisch geladen – ohne separate
         Einwilligung – mittels der JavaScript-Bibliothek
-        <strong>Leaflet</strong> in Verbindung mit <strong>CARTO</strong> als
-        Kartenanbieter. Die Kartenkacheln werden über den folgenden Code
-        eingebunden:
+        <strong>Leaflet</strong> in Verbindung mit
+        <strong>OpenStreetMap</strong> als Kartenanbieter. Die Kartenkacheln
+        werden über den folgenden Code eingebunden:
       </p>
-      <pre><code>L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-  subdomains: 'abcd',
+      <pre><code>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 19
 }).addTo(map);</code></pre>
       <p>
         Diese technische Umsetzung dient der Darstellung der Karte und erfolgt
-        aus rein funktionalen Gründen.
+        aus rein funktionalen Gründen. Details zur Datenverarbeitung finden
+        Sie in der <a href="datenschutz">Datenschutzerklärung</a>.
       </p>
       <hr />
       <p>

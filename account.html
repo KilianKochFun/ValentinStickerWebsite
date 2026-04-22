@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mein Account – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" crossorigin="anonymous" />
+  </head>
+  <body>
+    <header class="banner">
+      <div class="banner-content">
+        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <h1>Mein Account</h1>
+        <nav class="button-nav" style="margin-left: auto;">
+          <button onclick="window.location.href='index'">🏠 Zurück</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="auth-container">
+      <section class="admin-section" id="accountBox" hidden>
+        <h2>Angemeldet als <span id="accountName"></span></h2>
+        <p class="auth-hint">
+          Eingeloggt mit <span id="accountEmail"></span>.
+        </p>
+        <button id="uploadLinkBtn" class="secondary-btn" onclick="window.location.href='upload'">
+          📤 Sticker hochladen
+        </button>
+        <button id="logoutBtn" class="secondary-btn">🚪 Abmelden</button>
+      </section>
+
+      <section class="admin-section" id="mySticksBox" hidden>
+        <h2>Meine Sticker-Funde</h2>
+        <p class="auth-hint">
+          Alle Sticker, die dir zugeordnet sind. Nur du (und Admins) könnt sie bearbeiten oder löschen.
+        </p>
+        <div id="myStickersList" class="my-stickers-list"></div>
+        <p id="myStickersEmpty" class="auth-hint" hidden>Noch keine Sticker.</p>
+      </section>
+
+      <dialog id="editDialog" class="edit-dialog">
+        <form id="editForm" class="auth-form">
+          <h3>Sticker bearbeiten</h3>
+          <div class="edit-grid">
+            <div class="edit-col-left">
+              <button type="button" class="edit-image-slot" id="editImageSlot" aria-label="Bild ändern">
+                <img id="editCurrentImage" alt="" />
+                <span class="edit-image-overlay">📷 Bild ändern</span>
+              </button>
+              <input type="file" name="new_image" id="editFileInput" accept="image/jpeg,image/png,image/webp" hidden />
+              <label>
+                Standort <small>(auf die Karte klicken, Marker ziehen, oder Felder rechts tippen)</small>
+              </label>
+              <div id="editMap" class="pick-map"></div>
+            </div>
+            <div class="edit-col-right">
+              <label>
+                Titel
+                <input type="text" name="title" maxlength="120" />
+              </label>
+              <label>
+                Beschreibung
+                <textarea name="description" rows="3" maxlength="500"></textarea>
+              </label>
+              <div class="form-row">
+                <label>Breitengrad <input type="number" name="latitude" step="any" required /></label>
+                <label>Längengrad <input type="number" name="longitude" step="any" required /></label>
+              </div>
+              <label>
+                Fundzeitpunkt
+                <input type="datetime-local" name="found_at" required />
+              </label>
+              <label class="legacy-option">
+                <input type="checkbox" name="is_hidden" />
+                Versteckt (wird nicht in der Galerie/Karte gezeigt)
+              </label>
+              <div class="form-row">
+                <button type="submit">💾 Speichern</button>
+                <button type="button" id="editCancelBtn" class="secondary-btn">Abbrechen</button>
+              </div>
+              <p id="editError" class="auth-error" hidden></p>
+            </div>
+          </div>
+        </form>
+      </dialog>
+
+      <section class="admin-section" id="nameBox" hidden>
+        <h2>Anzeigename ändern</h2>
+        <form id="nameForm" class="auth-form">
+          <label>
+            Neuer Anzeigename <small>(2–40 Zeichen, muss eindeutig sein)</small>
+            <input type="text" name="display_name" required minlength="2" maxlength="40" />
+          </label>
+          <button type="submit">Name speichern</button>
+          <p id="nameError" class="auth-error" hidden></p>
+          <p id="nameOk" class="auth-ok" hidden></p>
+        </form>
+      </section>
+
+      <section class="admin-section" id="passwordBox" hidden>
+        <h2>Passwort ändern</h2>
+        <form id="passwordForm" class="auth-form">
+          <label>
+            Neues Passwort <small>(mindestens 10 Zeichen)</small>
+            <input type="password" name="password" required minlength="10" autocomplete="new-password" />
+          </label>
+          <label>
+            Neues Passwort wiederholen
+            <input type="password" name="password_confirm" required minlength="10" autocomplete="new-password" />
+          </label>
+          <button type="submit">Passwort speichern</button>
+          <p id="passwordError" class="auth-error" hidden></p>
+          <p id="passwordOk" class="auth-ok" hidden></p>
+        </form>
+      </section>
+
+      <section class="admin-section" id="dangerBox" hidden>
+        <h2 style="color:#b71c1c">Account löschen</h2>
+        <p class="auth-hint">
+          Beim Löschen werden deine Login-Daten entfernt und hochgeladene Sticker
+          sowie Kommentare anonymisiert (Inhalt bleibt sichtbar, aber ohne
+          Verbindung zu deinem Konto). Hochgeladene Bilder in deinem persönlichen
+          Storage-Ordner werden gelöscht. Dieser Schritt ist nicht umkehrbar.
+        </p>
+        <label class="legacy-option">
+          <input type="checkbox" id="confirmDelete" />
+          Ich verstehe, dass das endgültig ist.
+        </label>
+        <button id="deleteBtn" class="secondary-btn" disabled style="color:#b71c1c;border-color:#b71c1c;">
+          🗑️ Account endgültig löschen
+        </button>
+        <p id="accountError" class="auth-error" hidden></p>
+        <p id="accountOk" class="auth-ok" hidden></p>
+      </section>
+
+      <p id="notLoggedIn" class="auth-error" hidden>
+        Du bist nicht eingeloggt. <a href="login">Zum Login</a>
+      </p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      const { currentUser, currentProfile, supabase, imageUrlFor } = await import("./assets/js/supabase-client.js");
+      const { logout, deleteOwnAccount } = await import("./assets/js/auth.js");
+      const { createMapPicker } = await import("./assets/js/map-picker.js");
+      const { guessContinent, uploadImage } = await import("./assets/js/upload.js");
+      const { STORAGE_BUCKET } = await import("./assets/js/config.js");
+
+      const user = await currentUser();
+      if (!user) {
+        document.getElementById("notLoggedIn").hidden = false;
+      } else {
+        const profile = await currentProfile();
+        document.getElementById("accountBox").hidden = false;
+        document.getElementById("mySticksBox").hidden = false;
+        document.getElementById("nameBox").hidden = false;
+        document.getElementById("passwordBox").hidden = false;
+        document.getElementById("dangerBox").hidden = false;
+        document.getElementById("accountName").textContent = profile?.display_name ?? "(unbenannt)";
+        document.getElementById("accountEmail").textContent = user.email;
+
+        document.getElementById("logoutBtn").addEventListener("click", async () => {
+          await logout();
+          window.location.href = "index";
+        });
+
+        const nameForm = document.getElementById("nameForm");
+        const nameErr = document.getElementById("nameError");
+        const nameOk = document.getElementById("nameOk");
+        nameForm.display_name.value = profile?.display_name ?? "";
+        nameForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          nameErr.hidden = true; nameOk.hidden = true;
+          const newName = nameForm.display_name.value.trim();
+          if (newName.length < 2 || newName.length > 40) {
+            nameErr.textContent = "Anzeigename muss 2–40 Zeichen lang sein.";
+            nameErr.hidden = false; return;
+          }
+          if (newName === profile?.display_name) {
+            nameErr.textContent = "Das ist bereits dein Anzeigename.";
+            nameErr.hidden = false; return;
+          }
+          const { error } = await supabase
+            .from("profiles")
+            .update({ display_name: newName })
+            .eq("id", user.id);
+          if (error) {
+            // 23505 = unique_violation auf profiles_display_name_key
+            nameErr.textContent = error.code === "23505"
+              ? "Dieser Anzeigename ist bereits vergeben."
+              : error.message;
+            nameErr.hidden = false; return;
+          }
+          profile.display_name = newName;
+          document.getElementById("accountName").textContent = newName;
+          nameOk.textContent = "Anzeigename geändert.";
+          nameOk.hidden = false;
+        });
+
+        const pwForm = document.getElementById("passwordForm");
+        const pwErr = document.getElementById("passwordError");
+        const pwOk = document.getElementById("passwordOk");
+        pwForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          pwErr.hidden = true; pwOk.hidden = true;
+          const pw = pwForm.password.value;
+          const pw2 = pwForm.password_confirm.value;
+          if (pw !== pw2) {
+            pwErr.textContent = "Die Passwörter stimmen nicht überein.";
+            pwErr.hidden = false; return;
+          }
+          const { error } = await supabase.auth.updateUser({ password: pw });
+          if (error) {
+            pwErr.textContent = error.message;
+            pwErr.hidden = false; return;
+          }
+          pwOk.textContent = "Passwort geändert.";
+          pwOk.hidden = false;
+          pwForm.reset();
+        });
+
+        await renderMyStickers();
+
+        const confirmBox = document.getElementById("confirmDelete");
+        const deleteBtn = document.getElementById("deleteBtn");
+        const err = document.getElementById("accountError");
+        const ok = document.getElementById("accountOk");
+
+        confirmBox.addEventListener("change", () => {
+          deleteBtn.disabled = !confirmBox.checked;
+        });
+
+        deleteBtn.addEventListener("click", async () => {
+          err.hidden = true; ok.hidden = true;
+          deleteBtn.disabled = true;
+          try {
+            await deleteOwnAccount();
+            ok.textContent = "Account gelöscht. Du wirst gleich weitergeleitet.";
+            ok.hidden = false;
+            setTimeout(() => { window.location.href = "index"; }, 2000);
+          } catch (ex) {
+            err.textContent = ex.message;
+            err.hidden = false;
+            deleteBtn.disabled = false;
+          }
+        });
+      }
+
+      // ---------- Meine Sticker ----------
+      async function fetchMyStickers() {
+        const { data, error } = await supabase
+          .from("stickers")
+          .select("id, title, description, latitude, longitude, found_at, is_hidden, is_legacy, image_path")
+          .eq("uploader_id", user.id)
+          .order("found_at", { ascending: false });
+        if (error) { console.error(error); return []; }
+        return data ?? [];
+      }
+
+      function fmtDate(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        return d.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" });
+      }
+
+      async function renderMyStickers() {
+        const list = document.getElementById("myStickersList");
+        const empty = document.getElementById("myStickersEmpty");
+        const rows = await fetchMyStickers();
+        list.innerHTML = "";
+        if (!rows.length) { empty.hidden = false; return; }
+        empty.hidden = true;
+        for (const r of rows) {
+          const url = imageUrlFor({ image_path: r.image_path });
+          const row = document.createElement("div");
+          row.className = "my-sticker-row";
+          row.innerHTML = `
+            <img src="${url}" alt="" loading="lazy" />
+            <div>
+              <h3>${escapeHtml(r.title || "(ohne Titel)")}${r.is_hidden ? '<span class="hidden-badge">versteckt</span>' : ""}</h3>
+              <p>${escapeHtml(r.description || "")}</p>
+              <small>${r.latitude?.toFixed?.(4) ?? "?"}, ${r.longitude?.toFixed?.(4) ?? "?"} – ${fmtDate(r.found_at)}${r.is_legacy ? " – Legacy" : ""}</small>
+            </div>
+            <div class="my-sticker-actions">
+              <button type="button" data-action="edit">✏️ Bearbeiten</button>
+              <button type="button" data-action="delete" class="secondary-btn danger-btn">🗑️ Löschen</button>
+            </div>
+          `;
+          row.querySelector('[data-action="edit"]').addEventListener("click", () => openEdit(r));
+          row.querySelector('[data-action="delete"]').addEventListener("click", () => deleteSticker(r));
+          list.appendChild(row);
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      }
+
+      async function deleteSticker(r) {
+        if (!confirm(`"${r.title || "(ohne Titel)"}" wirklich löschen? Das kann nicht rückgängig gemacht werden.`)) return;
+        const { error } = await supabase.from("stickers").delete().eq("id", r.id);
+        if (error) { alert("Löschen fehlgeschlagen: " + error.message); return; }
+        // Bild aus Storage entfernen – nur, wenn es im eigenen Ordner liegt.
+        // Legacy-Bilder unter legacy/... kann nur ein Admin löschen (RLS).
+        if (r.image_path && r.image_path.startsWith(`${user.id}/`)) {
+          await supabase.storage.from(STORAGE_BUCKET).remove([r.image_path]);
+        }
+        await renderMyStickers();
+      }
+
+      // ---------- Edit-Dialog ----------
+      const dialog = document.getElementById("editDialog");
+      const editForm = document.getElementById("editForm");
+      const editErr = document.getElementById("editError");
+      let editPicker = null;
+      let editingId = null;
+      let syncingFromMap = false;
+
+      document.getElementById("editCancelBtn").addEventListener("click", () => dialog.close());
+
+      function ensureEditPicker(lat, lng) {
+        if (editPicker) {
+          editPicker.refresh();
+          // Beim erneuten Öffnen auf den neuen Sticker fliegen, nicht nur den Marker versetzen.
+          editPicker.map.setView([lat, lng], 13);
+          editPicker.setPoint(lat, lng);
+          return;
+        }
+        editPicker = createMapPicker("editMap", {
+          lat, lng, zoom: 13,
+          onChange: (la, lo) => {
+            syncingFromMap = true;
+            editForm.latitude.value = la.toFixed(6);
+            editForm.longitude.value = lo.toFixed(6);
+            syncingFromMap = false;
+          },
+        });
+        editPicker.setPoint(lat, lng);
+        editForm.latitude.addEventListener("change", () => {
+          if (syncingFromMap) return;
+          const la = parseFloat(editForm.latitude.value);
+          const lo = parseFloat(editForm.longitude.value);
+          if (Number.isFinite(la) && Number.isFinite(lo)) editPicker.setPoint(la, lo, { fly: true });
+        });
+        editForm.longitude.addEventListener("change", () => {
+          if (syncingFromMap) return;
+          const la = parseFloat(editForm.latitude.value);
+          const lo = parseFloat(editForm.longitude.value);
+          if (Number.isFinite(la) && Number.isFinite(lo)) editPicker.setPoint(la, lo, { fly: true });
+        });
+      }
+
+      let editingOldImagePath = null;
+      let editNewPreviewUrl = null;
+      let editOriginalImageUrl = null;
+      const editFileInput = document.getElementById("editFileInput");
+      const editCurrentImage = document.getElementById("editCurrentImage");
+      const editImageSlot = document.getElementById("editImageSlot");
+
+      editImageSlot.addEventListener("click", () => editFileInput.click());
+
+      editFileInput.addEventListener("change", () => {
+        if (editNewPreviewUrl) { URL.revokeObjectURL(editNewPreviewUrl); editNewPreviewUrl = null; }
+        const f = editFileInput.files?.[0];
+        if (!f) { editCurrentImage.src = editOriginalImageUrl || ""; return; }
+        editNewPreviewUrl = URL.createObjectURL(f);
+        editCurrentImage.src = editNewPreviewUrl;
+      });
+
+      function openEdit(r) {
+        editingId = r.id;
+        editingOldImagePath = r.image_path;
+        editErr.hidden = true;
+        editForm.title.value = r.title ?? "";
+        editForm.description.value = r.description ?? "";
+        editForm.latitude.value = r.latitude ?? "";
+        editForm.longitude.value = r.longitude ?? "";
+        editForm.is_hidden.checked = !!r.is_hidden;
+        editOriginalImageUrl = imageUrlFor({ image_path: r.image_path });
+        editCurrentImage.src = editOriginalImageUrl;
+        editFileInput.value = "";
+        if (editNewPreviewUrl) { URL.revokeObjectURL(editNewPreviewUrl); editNewPreviewUrl = null; }
+        if (r.found_at) {
+          const d = new Date(r.found_at);
+          const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+          editForm.found_at.value = local.toISOString().slice(0, 16);
+        } else {
+          editForm.found_at.value = "";
+        }
+        dialog.showModal();
+        // Leaflet liest die Container-Größe beim init. Erst nach zwei RAF-Ticks hat
+        // das <dialog> sein endgültiges Layout – sonst rendert die Map mit 0×0.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          ensureEditPicker(Number(r.latitude) || 51.1657, Number(r.longitude) || 10.4515);
+          editPicker.refresh();
+        }));
+      }
+
+      editForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        editErr.hidden = true;
+        const lat = parseFloat(editForm.latitude.value);
+        const lng = parseFloat(editForm.longitude.value);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          editErr.textContent = "Breiten- und Längengrad müssen Zahlen sein.";
+          editErr.hidden = false; return;
+        }
+        const payload = {
+          title: editForm.title.value.trim() || null,
+          description: editForm.description.value.trim() || null,
+          latitude: lat,
+          longitude: lng,
+          continent: guessContinent(lat, lng),
+          found_at: new Date(editForm.found_at.value).toISOString(),
+          is_hidden: editForm.is_hidden.checked,
+        };
+
+        // Optional: neues Bild hochladen.
+        const newFile = editFileInput.files?.[0];
+        let newPath = null;
+        if (newFile) {
+          try {
+            newPath = await uploadImage(newFile);
+            payload.image_path = newPath;
+          } catch (ex) {
+            editErr.textContent = ex.message;
+            editErr.hidden = false;
+            return;
+          }
+        }
+
+        const { error } = await supabase.from("stickers").update(payload).eq("id", editingId);
+        if (error) {
+          // Wenn das Update scheitert, frisch hochgeladenes Bild wieder entfernen.
+          if (newPath) await supabase.storage.from(STORAGE_BUCKET).remove([newPath]);
+          editErr.textContent = "Speichern fehlgeschlagen: " + error.message;
+          editErr.hidden = false;
+          return;
+        }
+
+        // Altes Bild aus Storage entfernen, wenn es im eigenen Ordner lag und ersetzt wurde.
+        if (newPath && editingOldImagePath && editingOldImagePath.startsWith(`${user.id}/`)) {
+          await supabase.storage.from(STORAGE_BUCKET).remove([editingOldImagePath]);
+        }
+
+        dialog.close();
+        if (editNewPreviewUrl) { URL.revokeObjectURL(editNewPreviewUrl); editNewPreviewUrl = null; }
+        await renderMyStickers();
+      });
+    </script>
+  </body>
+</html>

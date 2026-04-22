@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profil – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="page-sticky-footer">
+    <header class="banner">
+      <div class="banner-content">
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
+        <h1>Profil</h1>
+        <nav class="button-nav">
+          <button onclick="window.location.href='users'">👥 Alle Nutzer</button>
+          <button onclick="window.location.href='quiz'">🎯 Quizze</button>
+          <button onclick="window.location.href='index'">🏠 Karte</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="profile-wrapper" id="profileMain">
+      <p id="profileLoading" style="text-align:center;color:#888;padding:40px 0;">Lade…</p>
+      <p id="profileError" class="auth-error" hidden></p>
+
+      <div id="profileBody" hidden>
+        <section class="profile-head">
+          <h2 id="profileName"></h2>
+          <p class="since" id="profileSince"></p>
+        </section>
+
+        <section>
+          <div class="stats-grid">
+            <div class="stat-box"><div class="val" id="statStickers">0</div><div class="lbl">Sticker</div></div>
+            <div class="stat-box"><div class="val" id="statLegacy">0</div><div class="lbl">davon Legacy</div></div>
+            <div class="stat-box"><div class="val" id="statContinents">0</div><div class="lbl">Kontinente</div></div>
+            <div class="stat-box"><div class="val" id="statMaxDistance">0</div><div class="lbl">Max. Distanz (km)</div></div>
+          </div>
+          <div class="continent-list" id="continentList"></div>
+        </section>
+
+        <section style="margin-top:18px;">
+          <h2 style="color:var(--color-primary);font-size:1.1rem;margin:0 0 10px;">🏆 Quiz-Bestwerte</h2>
+          <div class="stats-grid">
+            <div class="stat-box"><div class="val" id="bestLocation">–</div><div class="lbl">Entfernung</div></div>
+            <div class="stat-box"><div class="val" id="bestDescription">–</div><div class="lbl">Beschreibung → Sticker</div></div>
+            <div class="stat-box"><div class="val" id="bestTitle">–</div><div class="lbl">Titel → Sticker</div></div>
+          </div>
+          <h3 style="color:#555;font-size:0.9rem;margin:14px 0 6px;">Letzte Runden</h3>
+          <div id="runHistory"></div>
+        </section>
+
+        <section style="margin-top:18px;">
+          <h2 style="color:var(--color-primary);font-size:1.1rem;margin:0 0 10px;">📷 Sticker</h2>
+          <div class="sticker-grid" id="stickerGrid"></div>
+          <p id="stickerEmpty" style="color:#888;" hidden>Noch keine Sticker.</p>
+        </section>
+      </div>
+    </main>
+
+    <!-- Lightbox Modal für Sticker-Details -->
+    <div id="stickerLightbox" class="lightbox hidden" role="dialog" aria-modal="true">
+      <div class="lightbox-backdrop" data-lightbox-close></div>
+      <div class="lightbox-content">
+        <button class="lightbox-close" aria-label="Schließen" data-lightbox-close>✕</button>
+        <img id="lbImg" src="" alt="" />
+        <h3 id="lbTitle"></h3>
+        <p id="lbDescription"></p>
+        <p id="lbMeta" class="lightbox-meta"></p>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a> |
+      <a href="users">Alle Nutzer</a>
+    </footer>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { supabase } from "./assets/js/supabase-client.js";
+      import { fetchUserRuns } from "./assets/js/quiz.js";
+      import { escapeHtml, fmtDate, fmtDistanceKm, haversineKm, stickerCardHtml } from "./assets/js/sticker-view.js";
+      import { guessContinent } from "./assets/js/upload.js";
+
+      const params = new URLSearchParams(window.location.search);
+      const userId = params.get("id");
+      const loadingEl = document.getElementById("profileLoading");
+      const errorEl   = document.getElementById("profileError");
+      const bodyEl    = document.getElementById("profileBody");
+
+      function showError(msg) {
+        loadingEl.hidden = true;
+        errorEl.textContent = msg;
+        errorEl.hidden = false;
+      }
+
+      if (!userId) {
+        showError("Kein Nutzer angegeben.");
+      } else {
+        await loadProfile(userId);
+      }
+
+      async function loadProfile(id) {
+        const [{ data: profile }, { data: stickers }, runs] = await Promise.all([
+          supabase.from("profiles").select("id, display_name, is_admin, created_at").eq("id", id).maybeSingle(),
+          supabase.from("stickers")
+            .select("id, title, description, image_path, latitude, longitude, continent, found_at, is_legacy, is_hidden")
+            .eq("uploader_id", id)
+            .eq("is_hidden", false)
+            .order("found_at", { ascending: false }),
+          fetchUserRuns(id),
+        ]);
+
+        if (!profile) { showError("Nutzer nicht gefunden."); return; }
+
+        document.title = `${profile.display_name} – Valentinsticker`;
+        document.getElementById("profileName").textContent = profile.display_name + (profile.is_admin ? " (Admin)" : "");
+        document.getElementById("profileSince").textContent = "Dabei seit " + fmtDate(profile.created_at);
+
+        const rows = stickers ?? [];
+        document.getElementById("statStickers").textContent = rows.length;
+        document.getElementById("statLegacy").textContent = rows.filter((s) => s.is_legacy).length;
+
+        // Kontinente neu aus Koordinaten ableiten – gespeicherte continent-Felder
+        // sind für Legacy-Imports teils falsch.
+        const continentSet = new Set(
+          rows
+            .map((s) => guessContinent(s.latitude, s.longitude) ?? s.continent)
+            .filter(Boolean)
+        );
+        document.getElementById("statContinents").textContent = continentSet.size;
+        const continentNames = { EU: "Europa", NA: "Nordamerika", SA: "Südamerika", AS: "Asien", AF: "Afrika", OC: "Ozeanien", AN: "Antarktis" };
+        document.getElementById("continentList").innerHTML = [...continentSet]
+          .map((c) => `<span class="continent-pill">${continentNames[c] ?? c}</span>`).join("");
+
+        // Max Distanz = maximale Haversine-Distanz zwischen zwei eigenen Stickern.
+        // O(n²), bei <~1000 Stickern pro Nutzer völlig ok.
+        const coords = rows
+          .filter((s) => Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
+          .map((s) => [s.latitude, s.longitude]);
+        let maxDist = 0;
+        for (let i = 0; i < coords.length; i++) {
+          for (let j = i + 1; j < coords.length; j++) {
+            const d = haversineKm(coords[i][0], coords[i][1], coords[j][0], coords[j][1]);
+            if (d > maxDist) maxDist = d;
+          }
+        }
+        document.getElementById("statMaxDistance").textContent = maxDist > 0 ? fmtDistanceKm(maxDist) : "–";
+
+        // Quiz-Bestwerte aus Runs berechnen.
+        const bestByType = {};
+        for (const r of runs) {
+          if (!bestByType[r.quiz_type] || r.score > bestByType[r.quiz_type]) {
+            bestByType[r.quiz_type] = r.score;
+          }
+        }
+        document.getElementById("bestLocation").textContent    = bestByType.location    ?? "–";
+        document.getElementById("bestDescription").textContent = bestByType.description ?? "–";
+        document.getElementById("bestTitle").textContent       = bestByType.title       ?? "–";
+
+        const quizLabels = { location: "Entfernung", description: "Beschreibung", title: "Titel" };
+        const historyEl = document.getElementById("runHistory");
+        if (!runs.length) {
+          historyEl.innerHTML = '<p style="color:#888;font-size:0.9rem;">Noch keine Quiz-Runden gespielt.</p>';
+        } else {
+          historyEl.innerHTML = runs.slice(0, 20).map((r) => `
+            <div class="sq-hs-entry">
+              <span style="min-width:110px;">${quizLabels[r.quiz_type] ?? r.quiz_type}</span>
+              <span class="sq-hs-val" style="margin-left:auto;">${r.score}</span>
+              <span class="sq-hs-date">${new Date(r.played_at).toLocaleDateString("de-DE")}</span>
+            </div>
+          `).join("");
+        }
+
+        // Sticker-Grid (die letzten 20).
+        const gridEl = document.getElementById("stickerGrid");
+        const emptyEl = document.getElementById("stickerEmpty");
+        if (!rows.length) {
+          emptyEl.hidden = false;
+          gridEl.hidden = true;
+        } else {
+          gridEl.innerHTML = rows.slice(0, 20)
+            .map((s) => stickerCardHtml(s, { clickable: true })).join("");
+        }
+
+        loadingEl.hidden = true;
+        bodyEl.hidden = false;
+      }
+
+      // Lightbox – zeigt Sticker vergrößert inkl. Beschreibung.
+      const lb = document.getElementById("stickerLightbox");
+      document.getElementById("stickerGrid").addEventListener("click", (e) => {
+        const btn = e.target.closest(".sticker-card-btn");
+        if (!btn) return;
+        document.getElementById("lbImg").src         = btn.dataset.stickerUrl;
+        document.getElementById("lbTitle").textContent       = btn.dataset.stickerTitle;
+        document.getElementById("lbDescription").textContent = btn.dataset.stickerDescription;
+        document.getElementById("lbMeta").textContent        = btn.dataset.stickerMeta;
+        lb.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      });
+      lb.addEventListener("click", (e) => {
+        if (e.target.matches("[data-lightbox-close]")) {
+          lb.classList.add("hidden");
+          document.body.style.overflow = "";
+        }
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !lb.classList.contains("hidden")) {
+          lb.classList.add("hidden");
+          document.body.style.overflow = "";
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,53 @@
+name: Supabase Backup
+# Wöchentlicher pg_dump ins private Backup-Repo.
+#
+# Secrets (im Repo-Settings setzen):
+#   SUPABASE_DB_PASSWORD  - DB-Passwort aus Phase 1.2 von setup.md
+#   BACKUP_REPO_PAT       - fine-grained PAT mit Write-Rechten aufs Backup-Repo
+#
+# Repository-Variablen (Settings → Variables → Actions → New repository variable):
+#   BACKUP_REPO           - z. B. "__GITHUB_USERNAME__/valentinsticker-backups"
+#   SUPABASE_PROJECT_REF  - Subdomain aus deiner Supabase-URL (https://<ref>.supabase.co)
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Backup-Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BACKUP_REPO }}
+          token: ${{ secrets.BACKUP_REPO_PAT }}
+
+      - name: Install Postgres-Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create dump
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+        run: |
+          STAMP=$(date -u +%Y-%m-%d)
+          pg_dump \
+            "postgresql://postgres.${PROJECT_REF}:${PGPASSWORD}@aws-0-eu-central-1.pooler.supabase.com:6543/postgres" \
+            --no-owner --no-privileges \
+            > "backup-${STAMP}.sql"
+
+      - name: Commit + push
+        run: |
+          git config user.name  "valentinsticker-backup-bot"
+          git config user.email "backup@valentinsticker.local"
+          git add backup-*.sql
+          if git diff --cached --quiet; then
+            echo "Nichts zu committen (Dump unverändert?)"
+            exit 0
+          fi
+          git commit -m "Backup $(date -u +%Y-%m-%d)"
+          git push

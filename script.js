@@ -7,9 +7,8 @@
 
   // Initialize map
 const map = L.map("map").setView([51.1657, 10.4515], 6);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-  attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-  subdomains: "abcd",
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 19,
 }).addTo(map);
 
@@ -39,14 +38,20 @@ let mapHidden = false; // Track map visibility
 if (locations.length != 0) {
   gallery.innerHTML = "";
 }
-// Create markers + gallery
+
+// Galerie-Pagination: Marker rendern wir für ALLE Sticker sofort (damit die
+// Karte vollständig ist). Die Galerie rendert pro Seite nur PAGE_SIZE Karten,
+// sonst werden bei >100 Stickern zu viele Bild-Requests auf einmal gefeuert.
+const GALLERY_PAGE_SIZE = 40;
+let galleryFilteredIndices = [];   // Indices aus `locations` nach aktuellem Filter
+let galleryPage = 0;
+
+// Create all markers (map zeigt immer ALLE Sticker) – Galerie-Karten werden
+// erst in renderGalleryPage() on-demand für die aktuelle Seite erstellt.
 locations.forEach((loc, index) => {
-  // --- Leaflet Marker ---
   const marker = L.marker(loc.position).addTo(map);
-  // Store marker on location for distance leaderboard navigation
   loc.marker = marker;
 
-  // --- Popup content ---
   const popupDiv = document.createElement("div");
   popupDiv.innerHTML = `
   <div style="text-align:center;">
@@ -62,17 +67,14 @@ locations.forEach((loc, index) => {
     </p>
   </div>
 `;
-// Fügt Entfernung im Popup hinzu (in popupDiv)
-const dist = calculateDistance(loc.position, AACHEN_CENTER);
-const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
-
-popupDiv.innerHTML += `
+  const dist = calculateDistance(loc.position, AACHEN_CENTER);
+  const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+  popupDiv.innerHTML += `
   <p style="text-align: left; font-size: 0.9em; color: #555;">
     Entfernung zur Aachener Mitte: <strong>${distText}</strong>
   </p>
 `;
 
-  // Fullscreen Button for Popup
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.innerHTML = "🖥️ Vollbild anzeigen";
   fullscreenBtn.style.cssText = `
@@ -86,10 +88,8 @@ popupDiv.innerHTML += `
       width: 100%;
     `;
   fullscreenBtn.onclick = () => openFullscreen(loc);
-
   popupDiv.appendChild(fullscreenBtn);
 
-  // Zoom Button
   const zoomButton = document.createElement("button");
   zoomButton.innerHTML = "🔍 Hineinzoomen";
   zoomButton.style.cssText = `
@@ -106,47 +106,92 @@ popupDiv.innerHTML += `
     map.setView(loc.position, 17);
     marker.openPopup();
   };
-
   popupDiv.appendChild(zoomButton);
 
-  // Marker Popup
-  marker.bindPopup(popupDiv, {
-    autoPan: true,
-    maxWidth: 350,
-  });
-
-  // Make popup image clickable to open fullscreen
+  marker.bindPopup(popupDiv, { autoPan: true, maxWidth: 350 });
   marker.on("popupopen", () => {
     const popupImg = document.getElementById(`popupImg${index}`);
-    if (popupImg) {
-      popupImg.onclick = () => openFullscreen(loc);
-    }
+    if (popupImg) popupImg.onclick = () => openFullscreen(loc);
   });
+});
 
-  // --- Gallery Card ---
+function buildGalleryCard(index) {
+  const loc = locations[index];
   const imageCard = document.createElement("div");
   imageCard.className = "image-card";
-  // Tag card with index for robust filtering
   imageCard.dataset.index = index;
   imageCard.innerHTML = `
-  <img src="${loc.image}" alt="${loc.title}">
+  <img src="${loc.image}" alt="${loc.title}" loading="lazy">
   <p class="image-title">${loc.title}</p>
-  <p class="finder-info">Gefunden von <strong>${loc.finder
-    }</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
+  <p class="finder-info">Gefunden von <strong>${loc.finder}</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
 `;
-
-  // Clicking a gallery card
   imageCard.onclick = () => {
     if (mapHidden) {
       openFullscreen(loc);
     } else {
       map.setView(loc.position, 17);
-      marker.openPopup();
+      if (loc.marker) loc.marker.openPopup();
     }
   };
+  return imageCard;
+}
 
-  gallery.appendChild(imageCard);
-});
+function renderGalleryPage() {
+  gallery.innerHTML = "";
+
+  if (galleryFilteredIndices.length === 0) {
+    const msg = document.createElement("p");
+    msg.className = "no-results";
+    msg.textContent = "Keine Treffer gefunden.";
+    gallery.appendChild(msg);
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(galleryFilteredIndices.length / GALLERY_PAGE_SIZE));
+  if (galleryPage >= totalPages) galleryPage = totalPages - 1;
+  if (galleryPage < 0) galleryPage = 0;
+
+  const start = galleryPage * GALLERY_PAGE_SIZE;
+  const end = Math.min(start + GALLERY_PAGE_SIZE, galleryFilteredIndices.length);
+  for (let i = start; i < end; i++) {
+    gallery.appendChild(buildGalleryCard(galleryFilteredIndices[i]));
+  }
+
+  // Pagination-Leiste nur zeigen, wenn es mehr als eine Seite gibt.
+  if (totalPages > 1) {
+    const nav = document.createElement("div");
+    nav.className = "gallery-pagination";
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.textContent = "← Zurück";
+    prev.disabled = galleryPage === 0;
+    prev.onclick = () => {
+      galleryPage--;
+      renderGalleryPage();
+      gallery.scrollTop = 0;
+    };
+    const info = document.createElement("span");
+    info.className = "gallery-page-info";
+    info.textContent = `Seite ${galleryPage + 1} von ${totalPages} (${galleryFilteredIndices.length} Sticker)`;
+    const next = document.createElement("button");
+    next.type = "button";
+    next.textContent = "Weiter →";
+    next.disabled = galleryPage >= totalPages - 1;
+    next.onclick = () => {
+      galleryPage++;
+      renderGalleryPage();
+      gallery.scrollTop = 0;
+    };
+    nav.appendChild(prev);
+    nav.appendChild(info);
+    nav.appendChild(next);
+    gallery.appendChild(nav);
+  }
+}
+
+// Initial: alle Sticker in die Galerie-Liste, erste Seite rendern.
+galleryFilteredIndices = locations.map((_, i) => i);
+renderGalleryPage();
 
 // Fügt Entfernung im Modal hinzu (openFullscreen)
 function openFullscreen(loc) {
@@ -242,31 +287,16 @@ function filterGallery() {
   const filterText = searchInput.value.trim();
   const selectedAuthor = authorSelect.value; // "" means all
 
-  const cards = gallery.querySelectorAll(".image-card");
-  let anyVisible = false;
+  galleryFilteredIndices = locations
+    .map((loc, i) => {
+      const matchesTitle = fuzzyMatch(filterText, loc.title);
+      const matchesAuthor = !selectedAuthor || loc.finder === selectedAuthor;
+      return matchesTitle && matchesAuthor ? i : -1;
+    })
+    .filter((i) => i >= 0);
 
-  cards.forEach((card) => {
-    const idx = card.dataset.index;
-    const loc = locations[idx];
-    const matchesTitle = fuzzyMatch(filterText, loc.title);
-    const matchesAuthor = !selectedAuthor || loc.finder === selectedAuthor;
-    const show = matchesTitle && matchesAuthor;
-    card.style.display = show ? "flex" : "none";
-    if (show) anyVisible = true;
-  });
-
-  // Handle no-results message
-  const existing = gallery.querySelector(".no-results");
-  if (!anyVisible) {
-    if (!existing) {
-      const msg = document.createElement("p");
-      msg.className = "no-results";
-      msg.textContent = "Keine Treffer gefunden.";
-      gallery.appendChild(msg);
-    }
-  } else if (existing) {
-    existing.remove();
-  }
+  galleryPage = 0;
+  renderGalleryPage();
 }
 
 // Suchfunktion
@@ -707,14 +737,10 @@ if (animationActive) {
 
 // HAMBURGER MENU FUNCTIONALITY
 if (hamburgerBtn && mobileMenu) {
-  console.log('Hamburger menu initialized');
 
   hamburgerBtn.addEventListener('click', (e) => {
-    console.log('Hamburger clicked');
     e.stopPropagation();
     const isHidden = mobileMenu.classList.contains('hidden');
-    console.log('Menu is hidden:', isHidden);
-    console.log('Menu classes before:', mobileMenu.className);
 
     if (isHidden) {
       mobileMenu.classList.remove('hidden');
@@ -724,8 +750,6 @@ if (hamburgerBtn && mobileMenu) {
       mobileMenu.classList.remove('visible');
     }
 
-    console.log('Menu classes after:', mobileMenu.className);
-    console.log('Menu display style:', window.getComputedStyle(mobileMenu).display);
   });
 
   // Close menu when clicking outside

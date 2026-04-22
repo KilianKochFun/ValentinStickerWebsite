@@ -42,21 +42,12 @@ let pairA    = null;
 let pairB    = null;
 let locked   = false;
 
-// ── localStorage helpers ──────────────────────────────────
-function getHighscores() {
-  try { return JSON.parse(localStorage.getItem('sqHighscores') || '[]'); } catch { return []; }
-}
-function saveHighscore(n, name) {
-  let hs = getHighscores();
-  hs.push({ score: n, name: name || '–', date: new Date().toLocaleDateString('de-DE') });
-  hs.sort((a, b) => b.score - a.score);
-  localStorage.setItem('sqHighscores', JSON.stringify(hs.slice(0, 5)));
-  return hs;
-}
-function getBest() {
-  const hs = getHighscores();
-  return hs.length ? hs[0].score : 0;
-}
+// ── Highscore state (global, aus DB) ───────────────────────
+// Wir cachen die Top-Liste zwischen Runden und fetchen nach jedem Game-Over neu.
+let topScores = [];        // [{ user_id, display_name, score, played_at }]
+let myBest    = 0;         // höchster Score des aktuellen Nutzers
+let currentProfile = null; // null = Gast
+let runSubmitted = false;  // verhindert Doppel-Submit pro Runde
 
 // ── Pick a random pair (never identical) ─────────────────
 function randomPair() {
@@ -179,31 +170,19 @@ function nextRound() {
   }
 }
 
-// ── Save name & score ──────────────────────────────────────
-let pendingScore = 0;
-function saveName() {
-  const name = document.getElementById('sqNameInput').value.trim() || '–';
-  saveHighscore(pendingScore, name);
-  document.getElementById('sqNameSaveBtn').disabled = true;
-  document.getElementById('sqNameInput').disabled   = true;
-  renderHighscoreList();
-}
-
 // ── Game Over ─────────────────────────────────────────────
-function gameOver() {
+let pendingScore = 0;
+async function gameOver() {
   document.getElementById('sqCards').style.display    = 'none';
   document.getElementById('sqQuestion').style.display = 'none';
   document.getElementById('sqStreakBar').style.display = 'none';
 
   pendingScore = streak;
-  const best      = Math.max(...getHighscores().map(h => h.score), streak);
-  const isNewBest = streak > 0 && streak >= best;
+  const best      = Math.max(myBest, streak);
+  const isNewBest = streak > 0 && streak > myBest;
 
   document.getElementById('sqGoStreak').textContent = streak;
   document.getElementById('sqGoBest').textContent   = best;
-  document.getElementById('sqNameInput').value      = '';
-  document.getElementById('sqNameInput').disabled   = false;
-  document.getElementById('sqNameSaveBtn').disabled = false;
 
   let emoji = '😵', title = 'Game Over!', sub = '';
   if (streak === 0) {
@@ -253,6 +232,44 @@ function gameOver() {
 
   document.getElementById('sqPunchSection').classList.add('hidden');
   document.getElementById('sqGameover').classList.add('visible');
+
+  // Score einreichen (nur eingeloggt), dann Top-Liste neu laden.
+  await submitAndRefresh(streak, isNewBest);
+}
+
+async function submitAndRefresh(score, wasNewBest) {
+  const statusEl = document.getElementById('sqSaveStatus');
+  statusEl.hidden = true;
+  statusEl.className = 'sq-save-status';
+
+  // Gast: klarer Hinweis, kein Submit.
+  if (!currentProfile) {
+    statusEl.innerHTML =
+      'Score nicht gespeichert – <a href="login">einloggen</a>, um in die Highscore-Liste zu kommen.';
+    statusEl.hidden = false;
+    return;
+  }
+
+  if (score <= 0 || runSubmitted) {
+    renderHighscoreList();
+    return;
+  }
+
+  const result = await window.sqQuiz.submitQuizRun('location', score);
+  runSubmitted = true;
+  if (result.saved) {
+    myBest = Math.max(myBest, score);
+    statusEl.textContent = wasNewBest
+      ? '🎉 Neuer persönlicher Highscore gespeichert!'
+      : 'Score gespeichert.';
+    statusEl.classList.add('ok');
+    statusEl.hidden = false;
+    topScores = await window.sqQuiz.fetchTopScores('location', 10);
+  } else {
+    statusEl.textContent = 'Speichern fehlgeschlagen: ' + (result.reason || 'unbekannt');
+    statusEl.classList.add('err');
+    statusEl.hidden = false;
+  }
   renderHighscoreList();
 }
 
@@ -260,6 +277,7 @@ function gameOver() {
 function startGame() {
   streak = 0;
   locked = false;
+  runSubmitted = false;
 
   document.getElementById('sqGameover').classList.remove('visible');
   document.getElementById('sqNextBtn').classList.add('hidden');
@@ -267,8 +285,10 @@ function startGame() {
   document.getElementById('sqQuestion').style.display = 'block';
   document.getElementById('sqStreakBar').style.display = 'flex';
 
-  document.getElementById('sqHsDisplay').textContent = getBest();
+  document.getElementById('sqHsDisplay').textContent = myBest;
   document.getElementById('sqToast').className       = 'sq-toast';
+  const status = document.getElementById('sqSaveStatus');
+  if (status) { status.hidden = true; status.textContent = ''; status.className = 'sq-save-status'; }
   updateDots();
 
   [pairA, pairB] = randomPair();
@@ -276,30 +296,37 @@ function startGame() {
   renderHighscoreList();
 }
 
-// ── Highscore list ────────────────────────────────────────
+// ── Highscore list (global, aus DB) ───────────────────────
 function renderHighscoreList() {
-  const hs  = getHighscores();
   const el  = document.getElementById('sqHsList');
   const medals = ['🥇','🥈','🥉'];
 
-  if (hs.length === 0) {
+  if (!topScores.length) {
     el.innerHTML = '<div class="sq-hs-empty">Noch kein Highscore – spiel los!</div>';
     return;
   }
-  el.innerHTML = hs.slice(0, 5).map((h, i) => {
+  el.innerHTML = topScores.slice(0, 10).map((h, i) => {
     const dotCount = Math.min(h.score, 8);
     const dots     = '<img src="img/valentinSticker.webp" alt="s">'.repeat(dotCount);
     const overflow = h.score > 8 ? `<span class="sq-hs-val" style="font-size:0.8rem">+${h.score-8}</span>` : '';
+    const date     = new Date(h.played_at).toLocaleDateString('de-DE');
+    const name     = escapeHtmlSq(h.display_name);
     return `
       <div class="sq-hs-entry">
         <span class="sq-hs-rank">${medals[i] || (i+1) + '.'}</span>
-        <strong style="min-width:60px;color:#333">${h.name || '–'}</strong>
+        <a class="sq-hs-name" href="profile?id=${encodeURIComponent(h.user_id)}">${name}</a>
         <div class="sq-hs-icons">${dots}${overflow}</div>
         <span class="sq-hs-val">${h.score}</span>
-        <span class="sq-hs-date">${h.date}</span>
+        <span class="sq-hs-date">${date}</span>
       </div>
     `;
   }).join('');
+}
+
+function escapeHtmlSq(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
 }
 
 // ── DOM-based confetti (self-cleaning) ─────────────────────
@@ -570,4 +597,22 @@ document.getElementById('hamburgerBtn').addEventListener('click', () => {
 });
 
 // ── Init ──────────────────────────────────────────────────
-startGame();
+// Die Module-Bridge in sticker-quiz.html setzt window.sqQuiz.
+// Wir warten notfalls bis das passiert ist, bevor wir Profile/Highscores laden.
+async function bootQuizPage() {
+  if (!window.sqQuiz) {
+    await new Promise((resolve) => window.addEventListener('sq-quiz-ready', resolve, { once: true }));
+  }
+  try {
+    currentProfile = await window.sqQuiz.currentProfile();
+    topScores      = await window.sqQuiz.fetchTopScores('location', 10);
+    if (currentProfile) {
+      const best = await window.sqQuiz.fetchUserBest(currentProfile.id, 'location');
+      if (best?.score) myBest = best.score;
+    }
+  } catch (e) {
+    console.error('[sticker-quiz] init:', e);
+  }
+  startGame();
+}
+bootQuizPage();

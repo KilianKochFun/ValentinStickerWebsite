@@ -143,31 +143,42 @@
       </p>
 
       <hr />
-      <h2>4. Einbindung von Kartenmaterial (Leaflet & CARTO)</h2>
+      <h2>4. Einbindung von Kartenmaterial (Leaflet &amp; OpenStreetMap)</h2>
       <p>
-        Zur Darstellung geographischer Informationen wird auf dieser Website die
-        interaktive Karte mittels der JavaScript-Bibliothek
-        <strong>Leaflet</strong> eingebunden. Die Kartenkacheln werden über
-        <strong>CARTO</strong> bereitgestellt. Hierzu wird folgender Code
-        verwendet:
+        Zur Darstellung geographischer Informationen wird auf dieser Website
+        eine interaktive Karte mittels der JavaScript-Bibliothek
+        <strong>Leaflet</strong> eingebunden. Die Kartenkacheln werden vom
+        gemeinnützigen Projekt <strong>OpenStreetMap</strong> bereitgestellt,
+        betrieben von der OpenStreetMap Foundation (St John's Innovation Centre,
+        Cowley Road, Cambridge, CB4 0WS, Vereinigtes Königreich). Hierzu wird
+        folgender Code verwendet:
       </p>
-      <pre><code>L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
-  subdomains: 'abcd',
+      <pre><code>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 19
 }).addTo(map);</code></pre>
       <p>
-        Beim Laden der Karte wird eine Verbindung zu den Servern von CARTO und
-        zum entsprechenden CDN hergestellt, wodurch Ihre IP-Adresse und
-        technische Informationen (z. B. Browsertyp) übertragen werden. Diese
-        Daten werden ausschließlich zur Bereitstellung der Kartenfunktion
-        verarbeitet.
+        Beim Laden der Karte wird eine Verbindung zu den Servern von
+        OpenStreetMap hergestellt, wodurch Ihre IP-Adresse sowie technische
+        Informationen (z. B. Browsertyp, angeforderte Kachel, Zeitstempel) an
+        OpenStreetMap übertragen werden. Diese Daten werden ausschließlich zur
+        Bereitstellung der Kartenfunktion sowie zum Schutz vor Missbrauch
+        verarbeitet. Die Server der OpenStreetMap Foundation stehen im
+        Vereinigten Königreich sowie weiteren EU-Standorten. Für das Vereinigte
+        Königreich besteht ein Angemessenheitsbeschluss der EU-Kommission
+        (Art. 45 DSGVO), sodass ein den EU-Datenschutzstandards entsprechendes
+        Schutzniveau gewährleistet ist.
       </p>
       <p>
         <strong>Rechtsgrundlage:</strong> Die Datenübertragung erfolgt aufgrund
         unseres berechtigten Interesses (Art. 6 Abs. 1 lit. f DSGVO) an der
-        Darstellung der Karte. Wird die Karte erst nach Ihrer Einwilligung
-        geladen, basiert die Verarbeitung auf Art. 6 Abs. 1 lit. a DSGVO.
+        Darstellung der Karte als zentrale Funktion dieser Website.
+      </p>
+      <p>
+        Weitere Informationen finden Sie in der
+        <a href="https://osmfoundation.org/wiki/Privacy_Policy"
+           target="_blank" rel="noreferrer noopener">
+          Datenschutzerklärung der OpenStreetMap Foundation</a>.
       </p>
 
       <hr />
@@ -186,7 +197,59 @@
       </p>
 
       <hr />
-      <h2>6. Cookies und Tracking</h2>
+      <h2>6. Registrierung, Upload und Kommentare (Supabase)</h2>
+      <p>
+        Sofern die Funktionen „Registrierung", „Sticker hochladen" oder
+        „Kommentieren" genutzt werden, werden personenbezogene Daten über
+        unseren Dienstleister <strong>Supabase Inc.</strong>, 970 Toa Payoh
+        North #07-04, Singapur 318992, verarbeitet. Server-Standort der
+        verwendeten Instanz ist <strong>Frankfurt am Main, Deutschland
+        (EU, AWS eu-central-1)</strong>.
+      </p>
+      <p>
+        Mit Supabase besteht ein Auftragsverarbeitungsvertrag (Data Processing
+        Addendum). Für Datenübermittlungen in Drittländer setzt Supabase
+        EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO) ein.
+      </p>
+      <p><strong>Verarbeitete Daten:</strong></p>
+      <ul>
+        <li>E-Mail-Adresse und Passwort-Hash (für die Anmeldung)</li>
+        <li>Selbst gewählter Anzeigename</li>
+        <li>Hochgeladene Sticker-Bilder sowie die dazu angegebenen Metadaten
+            (Titel, Beschreibung, Fund-Koordinaten, Fund-Zeitpunkt)</li>
+        <li>Kommentartexte</li>
+        <li>Technisch anfallende IP-Adressen und Zugriffszeiten beim Aufruf der
+            Supabase-API (zur Abwehr von Missbrauch)</li>
+      </ul>
+      <p>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO
+        (Vertragserfüllung gegenüber dem registrierten Nutzer) sowie Art. 6
+        Abs. 1 lit. f DSGVO (berechtigtes Interesse an Betrieb und Sicherheit
+        der Community-Funktionen).
+      </p>
+      <p>
+        <strong>Speicherdauer:</strong> Die Daten bleiben gespeichert, bis der
+        jeweilige Nutzer seinen Account löscht (siehe unten) oder bis wir den
+        Dienst einstellen. Technische Zugriffsprotokolle werden durch Supabase
+        nach deren Richtlinien automatisch gelöscht.
+      </p>
+      <p>
+        <strong>Löschung:</strong> Angemeldete Nutzer können ihren Account
+        jederzeit in der Seite „Mein Account" selbst löschen. Dabei werden
+        Login-Daten und im persönlichen Speicherbereich abgelegte Bilder
+        endgültig entfernt; bereits öffentlich sichtbare Sticker und Kommentare
+        bleiben erhalten, werden jedoch anonymisiert (Zuordnung zum Nutzer wird
+        gekappt). Auf Wunsch kann stattdessen auch eine vollständige Löschung
+        inklusive öffentlicher Beiträge über den Verantwortlichen (siehe § 1)
+        beantragt werden.
+      </p>
+      <p>
+        Weitere Informationen: <a href="https://supabase.com/privacy"
+          target="_blank" rel="noreferrer noopener">Supabase-Datenschutzerklärung</a>.
+      </p>
+
+      <hr />
+      <h2>7. Cookies und Tracking</h2>
       <p>
         Diese Website verwendet keine Cookies, die einer Einwilligung bedürfen,
         und setzt keine Tracking- oder Analysetools ein. Lediglich technisch
@@ -195,7 +258,7 @@
       </p>
 
       <hr />
-      <h2>7. Ihre Rechte</h2>
+      <h2>8. Ihre Rechte</h2>
       <p>
         Sie haben als betroffene Person das Recht auf Auskunft über die von uns
         verarbeiteten personenbezogenen Daten, auf Berichtigung, Löschung,
@@ -207,13 +270,13 @@
       </p>
 
       <hr />
-      <h2>8. Weitere Informationen</h2>
+      <h2>9. Weitere Informationen</h2>
       <p>
         Für nähere Details zur Datenverarbeitung durch eingebundene
         Drittanbieter verweisen wir auf deren eigene Datenschutzerklärungen.
         Diese Datenschutzerklärung wird bei Bedarf aktualisiert, um Änderungen
         in der Datenverarbeitung oder Rechtslage Rechnung zu tragen. (Stand:
-        März 2025)
+        April 2026)
       </p>
       <p>
         Quelle/Referenzen: e-recht24, IT-Recht Kanzlei, Datenschutz-Generator.

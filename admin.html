@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="banner">
+      <div class="banner-content">
+        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <h1>Admin</h1>
+        <nav class="button-nav" style="margin-left: auto;">
+          <button onclick="window.location.href='index'">🏠 Zurück</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="auth-container" id="adminMain" hidden>
+      <section class="admin-section">
+        <h2>Invite-Code generieren</h2>
+        <form id="inviteForm" class="auth-form">
+          <label>
+            Notiz (z. B. Name des Empfängers)
+            <input type="text" name="note" maxlength="80" required />
+          </label>
+          <label>
+            Gültig für (Tage)
+            <input type="number" name="days" min="1" max="365" value="30" />
+          </label>
+          <button type="submit">Code erzeugen</button>
+          <p id="inviteResult" class="auth-ok" hidden></p>
+          <p id="inviteError" class="auth-error" hidden></p>
+        </form>
+      </section>
+
+      <section class="admin-section">
+        <h2>Offene Invite-Codes</h2>
+        <ul id="openCodes"></ul>
+      </section>
+
+      <section class="admin-section">
+        <h2>Nutzer verwalten</h2>
+        <p class="auth-hint">
+          Passwort zurücksetzen erzeugt ein neues Zufallspasswort, das hier einmalig
+          angezeigt wird. Gib es dem Nutzer sicher weiter und bitte, es sofort zu ändern.
+          Löschen anonymisiert Sticker (wie bei Selbst-Löschung) und entfernt den Account endgültig.
+        </p>
+        <form id="userActionForm" class="auth-form">
+          <label>
+            Nutzer
+            <select name="target_user_id" id="targetUserSelect" required></select>
+          </label>
+          <div class="form-row">
+            <button type="button" id="resetPwBtn">🔑 Passwort zurücksetzen</button>
+            <button type="button" id="deleteUserBtn" class="secondary-btn danger-btn">🗑️ Nutzer löschen</button>
+          </div>
+          <p id="userActionOk" class="auth-ok" hidden></p>
+          <p id="userActionError" class="auth-error" hidden></p>
+          <p id="userActionPassword" class="auth-ok" hidden style="font-family:monospace;font-size:1.1em;"></p>
+        </form>
+      </section>
+
+      <section class="admin-section">
+        <h2>Legacy-Finder einem User zuordnen</h2>
+        <form id="mergeForm" class="auth-form">
+          <label>
+            Legacy-Name
+            <select name="legacy_name" id="legacyNameSelect" required></select>
+          </label>
+          <label>
+            Übertragen auf Nutzer
+            <select name="user_id" id="userSelect" required></select>
+          </label>
+          <button type="submit">Zuordnen</button>
+          <p id="mergeResult" class="auth-ok" hidden></p>
+          <p id="mergeError" class="auth-error" hidden></p>
+        </form>
+      </section>
+    </main>
+
+    <p id="notAdmin" class="auth-error" hidden>Nur für Admins.</p>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { supabase, currentProfile } from "./assets/js/supabase-client.js";
+      import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./assets/js/config.js";
+
+      const profile = await currentProfile();
+      if (!profile?.is_admin) {
+        document.getElementById("notAdmin").hidden = false;
+      } else {
+        document.getElementById("adminMain").hidden = false;
+        initAdmin();
+      }
+
+      function randomCode() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const pick = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+        return `${pick(4)}-${pick(4)}-${pick(4)}`;
+      }
+
+      async function refreshOpenCodes() {
+        const { data } = await supabase
+          .from("invite_codes")
+          .select("code, note, expires_at, created_at")
+          .is("used_by", null)
+          .order("created_at", { ascending: false });
+        const list = document.getElementById("openCodes");
+        list.innerHTML = (data ?? []).map((c) => `
+          <li><code>${c.code}</code> — ${c.note ?? ""}
+            <small>(gültig bis ${c.expires_at ? new Date(c.expires_at).toLocaleDateString("de-DE") : "unbegrenzt"})</small>
+          </li>
+        `).join("") || "<li>Keine offenen Codes.</li>";
+      }
+
+      async function refreshUserSelect() {
+        const { data: me } = await supabase.auth.getUser();
+        const myId = me.user?.id;
+        const { data: users } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .order("display_name");
+        // Sich selbst raushalten – die Edge Function verbietet die Aktion gegen sich selbst.
+        const rows = (users ?? []).filter((u) => u.id !== myId);
+        const select = document.getElementById("targetUserSelect");
+        select.innerHTML = rows.length
+          ? rows.map((u) => `<option value="${u.id}">${u.display_name}</option>`).join("")
+          : `<option value="" disabled>Keine anderen Nutzer</option>`;
+      }
+
+      async function callAdminUserAction(action, targetUserId) {
+        const { data: session } = await supabase.auth.getSession();
+        const jwt = session.session?.access_token;
+        if (!jwt) throw new Error("Nicht eingeloggt.");
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-user-action`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${jwt}`,
+            "apikey": SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ action, target_user_id: targetUserId }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body?.error ?? "Aktion fehlgeschlagen.");
+        return body;
+      }
+
+      async function refreshLegacyMergeForm() {
+        const { data: legacyRows } = await supabase
+          .from("stickers")
+          .select("legacy_finder_name")
+          .eq("is_legacy", true)
+          .not("legacy_finder_name", "is", null);
+        const names = [...new Set((legacyRows ?? []).map((r) => r.legacy_finder_name))].sort();
+        document.getElementById("legacyNameSelect").innerHTML =
+          names.map((n) => `<option value="${n}">${n}</option>`).join("");
+
+        const { data: users } = await supabase
+          .from("profiles")
+          .select("id, display_name")
+          .order("display_name");
+        document.getElementById("userSelect").innerHTML =
+          (users ?? []).map((u) => `<option value="${u.id}">${u.display_name}</option>`).join("");
+      }
+
+      function initAdmin() {
+        refreshOpenCodes();
+        refreshLegacyMergeForm();
+        refreshUserSelect();
+
+        const userActionForm = document.getElementById("userActionForm");
+        const resetBtn = document.getElementById("resetPwBtn");
+        const delBtn = document.getElementById("deleteUserBtn");
+        const uaOk = document.getElementById("userActionOk");
+        const uaErr = document.getElementById("userActionError");
+        const uaPw = document.getElementById("userActionPassword");
+
+        function clearUserActionFeedback() {
+          uaOk.hidden = true; uaErr.hidden = true; uaPw.hidden = true;
+        }
+
+        resetBtn.addEventListener("click", async () => {
+          clearUserActionFeedback();
+          const target = userActionForm.target_user_id.value;
+          if (!target) return;
+          const name = userActionForm.target_user_id.selectedOptions[0]?.text ?? "";
+          if (!confirm(`Passwort für "${name}" zurücksetzen? Das alte Passwort wird sofort ungültig.`)) return;
+          resetBtn.disabled = true; delBtn.disabled = true;
+          try {
+            const res = await callAdminUserAction("reset_password", target);
+            uaOk.textContent = `Neues Passwort für "${name}":`;
+            uaOk.hidden = false;
+            uaPw.textContent = res.new_password;
+            uaPw.hidden = false;
+          } catch (ex) {
+            uaErr.textContent = ex.message;
+            uaErr.hidden = false;
+          } finally {
+            resetBtn.disabled = false; delBtn.disabled = false;
+          }
+        });
+
+        delBtn.addEventListener("click", async () => {
+          clearUserActionFeedback();
+          const target = userActionForm.target_user_id.value;
+          if (!target) return;
+          const name = userActionForm.target_user_id.selectedOptions[0]?.text ?? "";
+          if (!confirm(`Nutzer "${name}" wirklich endgültig löschen? Das kann nicht rückgängig gemacht werden.`)) return;
+          resetBtn.disabled = true; delBtn.disabled = true;
+          try {
+            await callAdminUserAction("delete", target);
+            uaOk.textContent = `Nutzer "${name}" gelöscht.`;
+            uaOk.hidden = false;
+            await refreshUserSelect();
+            await refreshLegacyMergeForm();
+          } catch (ex) {
+            uaErr.textContent = ex.message;
+            uaErr.hidden = false;
+          } finally {
+            resetBtn.disabled = false; delBtn.disabled = false;
+          }
+        });
+
+        document.getElementById("inviteForm").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const code = randomCode();
+          const days = parseInt(fd.get("days"), 10);
+          const expires_at = new Date(Date.now() + days * 86400_000).toISOString();
+          const { error } = await supabase.from("invite_codes").insert({
+            code, note: fd.get("note"), expires_at,
+          });
+          const ok = document.getElementById("inviteResult");
+          const err = document.getElementById("inviteError");
+          ok.hidden = true; err.hidden = true;
+          if (error) { err.textContent = error.message; err.hidden = false; return; }
+          ok.textContent = `Code erzeugt: ${code}`;
+          ok.hidden = false;
+          e.target.reset();
+          refreshOpenCodes();
+        });
+
+        document.getElementById("mergeForm").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const legacy_name = fd.get("legacy_name");
+          const user_id = fd.get("user_id");
+          // Merge: uploader_id setzen, legacy_finder_name leer räumen.
+          // is_legacy bleibt true, damit image_path weiter auf img/StickerFunde/ zeigt.
+          const { error, count } = await supabase
+            .from("stickers")
+            .update({ uploader_id: user_id, legacy_finder_name: null }, { count: "exact" })
+            .eq("is_legacy", true)
+            .eq("legacy_finder_name", legacy_name);
+          const ok = document.getElementById("mergeResult");
+          const err = document.getElementById("mergeError");
+          ok.hidden = true; err.hidden = true;
+          if (error) { err.textContent = error.message; err.hidden = false; return; }
+          ok.textContent = `${count ?? "?"} Sticker übertragen.`;
+          ok.hidden = false;
+          refreshLegacyMergeForm();
+        });
+      }
+    </script>
+  </body>
+</html>

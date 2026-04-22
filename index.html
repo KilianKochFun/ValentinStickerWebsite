@@ -19,22 +19,32 @@
         <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
         <h1>Valentinsticker.de</h1>
         <nav class="button-nav">
-          <button id="quizNavBtn" onclick="window.location.href='sticker-quiz.html'">🧠 Quiz</button>
+          <button id="quizNavBtn" onclick="window.location.href='quiz'">🧠 Quizze</button>
+          <button id="usersNavBtn" onclick="window.location.href='users'">👥 Nutzer</button>
           <button id="toggleAnimationBtn">🎉 Animation an</button>
           <button id="settingsBtn">⚙️ Einstellungen</button>
           <button id="toggleCursorBtn">🖱️ Cursor Effekt</button>
           <button id="toggleViewBtn">📷 Nur Galerie anzeigen</button>
+          <button id="authUploadBtn" class="auth-nav-btn" hidden onclick="window.location.href='upload'">📤 Upload</button>
+          <button id="authAdminBtn" class="auth-nav-btn" hidden onclick="window.location.href='admin'">🛡️ Admin</button>
+          <button id="authAccountBtn" class="auth-nav-btn" hidden onclick="window.location.href='account'">👤 Mein Account</button>
+          <button id="authLoginBtn" class="auth-nav-btn" hidden onclick="window.location.href='login'">🔑 Login</button>
         </nav>
         <button id="hamburgerBtn" class="hamburger-btn">☰</button>
       </div>
 
       <!-- Mobile Menu -->
       <nav id="mobileMenu" class="mobile-menu hidden">
-        <button onclick="window.location.href='sticker-quiz.html'">🧠 Quiz spielen</button>
+        <button onclick="window.location.href='quiz'">🧠 Quizze</button>
+        <button onclick="window.location.href='users'">👥 Nutzer</button>
         <button id="toggleAnimationBtnMobile">🎉 Animation an</button>
         <button id="settingsBtnMobile">⚙️ Einstellungen</button>
         <button id="toggleCursorBtnMobile">🖱️ Cursor Effekt</button>
         <button id="toggleViewBtnMobile">📷 Nur Galerie anzeigen</button>
+        <button id="authUploadBtnMobile" hidden onclick="window.location.href='upload'">📤 Sticker hochladen</button>
+        <button id="authAdminBtnMobile" hidden onclick="window.location.href='admin'">🛡️ Admin</button>
+        <button id="authAccountBtnMobile" hidden onclick="window.location.href='account'">👤 Mein Account</button>
+        <button id="authLoginBtnMobile" hidden onclick="window.location.href='login'">🔑 Login</button>
       </nav>
     </header>
 
@@ -145,9 +155,29 @@
       <a href="datenschutz">Datenschutz</a>
     </footer>
 
-    <!-- Leaflet JS + Own Script -->
+    <!-- Leaflet JS + Supabase Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
-    <script src="locations.js"></script>
-    <script src="script.js"></script>
+    <script src="assets/js/config-global.js"></script>
+    <script src="assets/js/bootstrap.js" data-main="script.js"></script>
+
+    <!-- Auth-Nav: zeigt Login/Upload/Account je nach Session -->
+    <script type="module">
+      import { currentUser, currentProfile } from "./assets/js/supabase-client.js";
+      const user = await currentUser();
+      const ids = user
+        ? ["authUploadBtn", "authAccountBtn", "authUploadBtnMobile", "authAccountBtnMobile"]
+        : ["authLoginBtn", "authLoginBtnMobile"];
+      ids.forEach((id) => { const el = document.getElementById(id); if (el) el.hidden = false; });
+      if (user) {
+        const profile = await currentProfile();
+        const acc = document.getElementById("authAccountBtn");
+        if (acc && profile?.display_name) acc.textContent = `👤 ${profile.display_name}`;
+        if (profile?.is_admin) {
+          ["authAdminBtn", "authAdminBtnMobile"].forEach((id) => {
+            const el = document.getElementById(id); if (el) el.hidden = false;
+          });
+        }
+      }
+    </script>
   </body>
 </html>

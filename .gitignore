@@ -1,1 +1,5 @@
 .env
+.env.local
+scripts/node_modules/
+supabase/.temp/
+supabase/.branches/

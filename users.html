@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nutzer – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="page-sticky-footer">
+    <header class="banner">
+      <div class="banner-content">
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
+        <h1>Nutzer</h1>
+        <nav class="button-nav">
+          <button onclick="window.location.href='quiz'">🎯 Quizze</button>
+          <button onclick="window.location.href='index'">🏠 Karte</button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="user-list">
+      <input type="text" id="userSearch" class="user-search" placeholder="Name suchen…" autocomplete="off" />
+      <div id="userListBox">Lade…</div>
+    </main>
+
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a> |
+      <a href="quiz">Quizze</a>
+    </footer>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module">
+      import { supabase } from "./assets/js/supabase-client.js";
+      import { escapeHtml } from "./assets/js/sticker-view.js";
+
+      // Profile + Sticker-Anzahl laden. Die RLS erlaubt SELECT auf beiden für alle.
+      const [{ data: profiles }, { data: stickers }] = await Promise.all([
+        supabase.from("profiles").select("id, display_name, is_admin, created_at").order("display_name"),
+        supabase.from("stickers").select("uploader_id").not("uploader_id", "is", null),
+      ]);
+
+      const counts = new Map();
+      for (const s of stickers ?? []) {
+        counts.set(s.uploader_id, (counts.get(s.uploader_id) ?? 0) + 1);
+      }
+
+      const rows = (profiles ?? []).map((p) => ({
+        id: p.id,
+        name: p.display_name,
+        is_admin: p.is_admin,
+        sticker_count: counts.get(p.id) ?? 0,
+      }));
+
+      const searchEl = document.getElementById("userSearch");
+      const listEl   = document.getElementById("userListBox");
+
+      function render() {
+        const q = searchEl.value.trim().toLowerCase();
+        const filtered = q ? rows.filter((r) => r.name.toLowerCase().includes(q)) : rows;
+        if (!filtered.length) {
+          listEl.innerHTML = '<p style="color:#888;text-align:center;padding:30px 0;">Keine Treffer.</p>';
+          return;
+        }
+        listEl.innerHTML = filtered.map((r) => `
+          <a class="user-row" href="profile?id=${encodeURIComponent(r.id)}">
+            <span class="user-row-name">${escapeHtml(r.name)}</span>
+            ${r.is_admin ? '<span class="user-row-badge">Admin</span>' : ""}
+            <span class="user-row-meta">${r.sticker_count} Sticker</span>
+          </a>
+        `).join("");
+      }
+
+      render();
+      searchEl.addEventListener("input", render);
+    </script>
+  </body>
+</html>
