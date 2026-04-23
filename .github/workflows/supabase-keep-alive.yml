@@ -17,8 +17,17 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           URL="${SUPABASE_URL%/}"
-          curl -sSf \
+          echo "URL-Länge: ${#URL}  (soll ~https://<ref>.supabase.co = ca. 40)"
+          echo "Endet mit: ...${URL: -20}"
+          echo
+          echo "--- Ping /rest/v1/stickers ---"
+          curl -v \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$URL/rest/v1/stickers?select=id&limit=1" \
-            > /dev/null
+            "$URL/rest/v1/stickers?select=id&limit=1"
+          echo
+          echo "--- Ping /rest/v1/ (root) ---"
+          curl -v \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$URL/rest/v1/"
