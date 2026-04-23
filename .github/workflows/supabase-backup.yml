@@ -33,18 +33,23 @@ jobs:
         env:
           PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          PGSSLMODE: require
         run: |
           STAMP=$(date -u +%Y-%m-%d)
           pg_dump \
-            "postgresql://postgres.${PROJECT_REF}:${PGPASSWORD}@aws-0-eu-central-1.pooler.supabase.com:6543/postgres" \
+            -h aws-0-eu-central-1.pooler.supabase.com \
+            -p 5432 \
+            -U "postgres.${PROJECT_REF}" \
+            -d postgres \
+            -Fc \
             --no-owner --no-privileges \
-            > "backup-${STAMP}.sql"
+            -f "backup-${STAMP}.dump"
 
       - name: Commit + push
         run: |
           git config user.name  "valentinsticker-backup-bot"
           git config user.email "backup@valentinsticker.local"
-          git add backup-*.sql
+          git add backup-*.dump
           if git diff --cached --quiet; then
             echo "Nichts zu committen (Dump unverändert?)"
             exit 0
