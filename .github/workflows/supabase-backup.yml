@@ -37,7 +37,7 @@ jobs:
         run: |
           STAMP=$(date -u +%Y-%m-%d)
           pg_dump \
-            -h aws-0-eu-central-1.pooler.supabase.com \
+            -h aws-1-eu-central-1.pooler.supabase.com \
             -p 5432 \
             -U "postgres.${PROJECT_REF}" \
             -d postgres \
