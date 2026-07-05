@@ -23,9 +23,27 @@ const centerIcon = L.divIcon({
   iconAnchor: [12, 41],
   popupAnchor: [0, -36],
 });
-L.marker(AACHEN_CENTER, { icon: centerIcon, zIndexOffset: 1000, title: "Aachener Mitte" })
-  .addTo(map)
-  .bindPopup("<strong>📍 Aachener Mitte</strong><br>Bezugspunkt für alle Entfernungen");
+const centerMarker = L.marker(AACHEN_CENTER, { icon: centerIcon, zIndexOffset: 1000, title: "Aachener Mitte" }).addTo(map);
+const centerPopup = document.createElement("div");
+centerPopup.innerHTML = "<strong>📍 Aachener Mitte</strong><br>Bezugspunkt für alle Entfernungen";
+const centerZoomBtn = document.createElement("button");
+centerZoomBtn.innerHTML = "🔍 Hineinzoomen";
+centerZoomBtn.style.cssText = `
+  background-color: #4CAF50;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 8px;
+  width: 100%;
+`;
+centerZoomBtn.onclick = () => {
+  map.setView(AACHEN_CENTER, 16);
+  centerMarker.openPopup();
+};
+centerPopup.appendChild(centerZoomBtn);
+centerMarker.bindPopup(centerPopup);
 
 // Get unique authors from 'locations'
 const uniqueAuthors = new Set(locations.map((loc) => loc.finder || "Unknown"));
