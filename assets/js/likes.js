@@ -37,7 +37,7 @@ async function loadLike(id) {
 }
 
 async function render(id) {
-  box.innerHTML = `<button class="like-btn" type="button" disabled>🤍 …</button>`;
+  box.innerHTML = `<button class="like-btn" type="button" disabled>👍 …</button>`;
   await ensureAuth();
   const { count, liked } = await loadLike(id);
   if (id !== currentId) return;
@@ -45,7 +45,7 @@ async function render(id) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "like-btn" + (liked ? " liked" : "");
-  btn.innerHTML = `${liked ? "❤️" : "🤍"} <span class="like-count">${count}</span>`;
+  btn.innerHTML = `👍 <span class="like-label">Like</span> <span class="like-count">${count}</span>`;
   btn.title = me ? (liked ? "Gefällt dir nicht mehr" : "Gefällt mir") : "Zum Liken einloggen";
   btn.addEventListener("click", () => toggle(id, liked));
   box.innerHTML = "";

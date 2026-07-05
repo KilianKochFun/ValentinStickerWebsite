@@ -87,22 +87,24 @@
 
       <!-- Right Column (Search + Gallery) -->
       <div class="right-column">
-        <!-- Search + Author Filter -->
-        <div class="search-and-filter">
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Suche nach Titel..."
-          />
+        <!-- Steuer-Box: Suche + Finder + Blättern (weiße Box mit Grünrand) -->
+        <div class="gallery-controls">
+          <div class="search-and-filter">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Suche nach Titel..."
+            />
 
-          <select id="authorSelect">
-            <option value="">Alle Finder</option>
-            <!-- Options will be dynamically generated if you prefer -->
-          </select>
+            <select id="authorSelect">
+              <option value="">Alle Finder</option>
+              <!-- Options will be dynamically generated if you prefer -->
+            </select>
+          </div>
+
+          <!-- Blätter-Leiste (außerhalb der scrollenden Galerie-Box) -->
+          <div id="galleryPagination" class="gallery-pagination-wrap"></div>
         </div>
-
-        <!-- Blätter-Leiste über der Galerie (außerhalb der scrollenden Box) -->
-        <div id="galleryPagination" class="gallery-pagination-wrap"></div>
 
         <!-- Vertical Gallery -->
         <div id="gallery">
