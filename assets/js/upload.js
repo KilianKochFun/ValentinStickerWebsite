@@ -2,8 +2,27 @@
 import { supabase } from "./supabase-client.js";
 import { STORAGE_BUCKET } from "./config.js";
 
-const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB (entspricht Bucket-Limit)
+const ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_VIDEO = ["video/mp4", "video/webm", "video/quicktime"];
+const MAX_IMAGE = 5 * 1024 * 1024;   // 5 MB
+const MAX_VIDEO = 15 * 1024 * 1024;  // 15 MB (Bucket-Limit)
+const MAX_VIDEO_SECONDS = 30;
+
+export function isVideoFile(file) {
+  return !!file && ALLOWED_VIDEO.includes(file.type);
+}
+
+// Liest die Länge eines Videos aus den Metadaten (ohne komplett zu laden).
+export function videoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(v.duration); };
+    v.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Video konnte nicht gelesen werden.")); };
+    v.src = url;
+  });
+}
 
 function sanitizeFilename(name) {
   const base = name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
@@ -28,8 +47,20 @@ export async function uploadImage(file) {
   const { data: u } = await supabase.auth.getUser();
   const user = u.user;
   if (!user) throw new Error("Nicht eingeloggt.");
-  if (!ALLOWED_MIME.includes(file.type)) throw new Error("Nur JPEG, PNG oder WebP.");
-  if (file.size > MAX_SIZE) throw new Error("Datei ist größer als 5 MB.");
+
+  const isImage = ALLOWED_IMAGE.includes(file.type);
+  const isVideo = ALLOWED_VIDEO.includes(file.type);
+  if (!isImage && !isVideo) {
+    throw new Error("Nur Bilder (JPEG, PNG, WebP) oder Videos (MP4, WebM, MOV).");
+  }
+  if (isImage && file.size > MAX_IMAGE) throw new Error("Bild ist größer als 5 MB.");
+  if (isVideo) {
+    if (file.size > MAX_VIDEO) throw new Error("Video ist größer als 15 MB.");
+    const dur = await videoDuration(file);
+    if (dur > MAX_VIDEO_SECONDS + 0.5) {
+      throw new Error(`Video ist zu lang (${Math.round(dur)} s). Maximal ${MAX_VIDEO_SECONDS} s erlaubt.`);
+    }
+  }
 
   const path = `${user.id}/${Date.now()}-${sanitizeFilename(file.name)}`;
   const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {

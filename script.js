@@ -43,6 +43,7 @@ const toggleViewBtn = document.getElementById("toggleViewBtn");
 const modal = document.getElementById("fullscreenModal");
 const closeModal = document.getElementById("closeModal");
 const modalImage = document.getElementById("modalImage");
+const modalVideo = document.getElementById("modalVideo");
 const modalTitle = document.getElementById("modalTitle");
 const modalDescription = document.getElementById("modalDescription");
 const shareStickerBtn = document.getElementById("shareStickerBtn");
@@ -67,12 +68,17 @@ locations.forEach((loc, index) => {
   const marker = L.marker(loc.position).addTo(map);
   loc.marker = marker;
 
+  const popupMedia = loc.isVideo
+    ? `<video src="${loc.image}" controls muted playsinline preload="metadata"
+         style="width: 200px; height: 200px; object-fit: cover; border-radius: 8px;"
+         id="popupImg${index}"></video>`
+    : `<img src="${loc.image}" alt="${loc.title}"
+         style="width: 200px; height: 200px; object-fit: cover;border-radius: 8px; cursor: pointer;"
+         id="popupImg${index}">`;
   const popupDiv = document.createElement("div");
   popupDiv.innerHTML = `
   <div style="text-align:center;">
-    <img src="${loc.image}" alt="${loc.title}"
-         style="width: 200px; height: 200px; object-fit: cover;border-radius: 8px; cursor: pointer;"
-         id="popupImg${index}">
+    ${popupMedia}
     <p style="text-align: left; font-size: 1.2em;"><strong>${loc.title
     }</strong></p>
     <p style="text-align: left">${loc.description}</p>
@@ -132,6 +138,7 @@ locations.forEach((loc, index) => {
 
   marker.bindPopup(popupDiv, { autoPan: true, maxWidth: 350 });
   marker.on("popupopen", () => {
+    if (loc.isVideo) return; // Video spielt inline über seine Controls
     const popupImg = document.getElementById(`popupImg${index}`);
     if (popupImg) popupImg.onclick = () => openFullscreen(loc);
   });
@@ -152,11 +159,15 @@ function buildGalleryCard(index) {
   const imageCard = document.createElement("div");
   imageCard.className = "image-card";
   imageCard.dataset.index = index;
+  const cardMedia = loc.isVideo
+    ? `<video src="${loc.image}#t=0.1" muted playsinline preload="metadata"></video>`
+    : `<img src="${loc.image}" alt="${loc.title}" loading="lazy">`;
   imageCard.innerHTML = `
-  <img src="${loc.image}" alt="${loc.title}" loading="lazy">
+  ${cardMedia}
   <p class="image-title">${loc.title}</p>
   <p class="finder-info">Gefunden von <strong>${loc.finder}</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
   ${loc.commentCount > 0 ? `<span class="comment-count-badge">💬 ${loc.commentCount}</span>` : ""}
+  ${loc.isVideo ? `<span class="video-badge">▶</span>` : ""}
 `;
   imageCard.onclick = () => {
     if (mapHidden) {
@@ -266,8 +277,16 @@ function openFullscreen(loc) {
   // Deep-Link setzen, damit die Adresszeile den offenen Sticker zeigt (teilbar).
   if (loc.id) history.replaceState(null, "", location.pathname + "?sticker=" + loc.id);
   modal.style.display = "block";
-  modalImage.src = loc.image;
-  modalImage.alt = loc.title;
+  if (loc.isVideo) {
+    modalImage.hidden = true;
+    modalImage.removeAttribute("src");
+    if (modalVideo) { modalVideo.hidden = false; modalVideo.src = loc.image; }
+  } else {
+    if (modalVideo) { modalVideo.pause(); modalVideo.hidden = true; modalVideo.removeAttribute("src"); }
+    modalImage.hidden = false;
+    modalImage.src = loc.image;
+    modalImage.alt = loc.title;
+  }
   modalTitle.textContent = loc.title;
   modalDescription.textContent = loc.description;
 
@@ -306,6 +325,7 @@ if (shareStickerBtn) {
 
 function closeFullscreen() {
   modal.style.display = "none";
+  if (modalVideo) modalVideo.pause();
   currentModalLoc = null;
   document.dispatchEvent(new CustomEvent("sticker:close"));
   // Deep-Link-Parameter wieder aus der Adresszeile entfernen.

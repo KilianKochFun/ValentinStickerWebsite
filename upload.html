@@ -23,10 +23,12 @@
     <main class="auth-container">
       <form id="uploadForm" class="auth-form" enctype="multipart/form-data">
         <label>
-          Foto <small>(JPEG, PNG oder WebP – max. 5 MB)</small>
-          <input type="file" name="file" id="fileInput" accept="image/jpeg,image/png,image/webp" required />
+          Foto oder Video
+          <small>(Bild: JPEG/PNG/WebP, max. 5 MB · Video: MP4/WebM/MOV, max. 15 MB &amp; 30 s)</small>
+          <input type="file" name="file" id="fileInput" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" required />
         </label>
         <img id="uploadPreview" class="upload-preview" alt="" hidden />
+        <video id="uploadVideoPreview" class="upload-preview" controls playsinline hidden></video>
 
         <label>
           Titel
@@ -45,11 +47,11 @@
         <div class="form-row">
           <label>
             Breitengrad
-            <input type="number" name="latitude" step="any" required placeholder="50.7753" />
+            <input type="number" name="latitude" step="any" required placeholder="50.7763" />
           </label>
           <label>
             Längengrad
-            <input type="number" name="longitude" step="any" required placeholder="6.0839" />
+            <input type="number" name="longitude" step="any" required placeholder="6.0836" />
           </label>
         </div>
         <button type="button" id="locateBtn" class="secondary-btn">📍 Meinen Standort verwenden</button>
@@ -65,12 +67,21 @@
       </form>
     </main>
 
+    <!-- Lade-Overlay: klar sichtbar, damit niemand doppelt hochlädt -->
+    <div id="uploadOverlay" class="upload-overlay" hidden>
+      <div class="upload-overlay-box">
+        <div class="spinner" aria-hidden="true"></div>
+        <p class="upload-overlay-title">Wird hochgeladen…</p>
+        <small>Bitte warten und die Seite nicht schließen oder neu laden.</small>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
     <script src="assets/js/config-global.js"></script>
     <script type="module">
       import { currentUser } from "./assets/js/supabase-client.js";
       import { logout } from "./assets/js/auth.js";
-      import { uploadSticker } from "./assets/js/upload.js";
+      import { uploadSticker, isVideoFile, videoDuration } from "./assets/js/upload.js";
       import { createMapPicker } from "./assets/js/map-picker.js";
 
       if (!(await currentUser())) {
@@ -88,15 +99,34 @@
       const locateBtn = document.getElementById("locateBtn");
       const fileInput = document.getElementById("fileInput");
       const preview = document.getElementById("uploadPreview");
+      const videoPreview = document.getElementById("uploadVideoPreview");
+      const overlay = document.getElementById("uploadOverlay");
+      const submitBtn = form.querySelector('button[type="submit"]');
 
       let previewUrl = null;
-      fileInput.addEventListener("change", () => {
+      fileInput.addEventListener("change", async () => {
         if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+        err.hidden = true;
+        preview.hidden = true; preview.removeAttribute("src");
+        videoPreview.hidden = true; videoPreview.removeAttribute("src");
         const f = fileInput.files?.[0];
-        if (!f) { preview.hidden = true; preview.src = ""; return; }
+        if (!f) return;
         previewUrl = URL.createObjectURL(f);
-        preview.src = previewUrl;
-        preview.hidden = false;
+        if (isVideoFile(f)) {
+          videoPreview.src = previewUrl;
+          videoPreview.hidden = false;
+          // Länge früh prüfen, damit nicht erst nach dem Upload gemeckert wird.
+          try {
+            const dur = await videoDuration(f);
+            if (dur > 30.5) {
+              err.textContent = `Video ist ${Math.round(dur)} s lang – erlaubt sind max. 30 s. Bitte ein kürzeres Video wählen.`;
+              err.hidden = false;
+            }
+          } catch (_) {}
+        } else {
+          preview.src = previewUrl;
+          preview.hidden = false;
+        }
       });
 
       // Default auf jetzt
@@ -138,8 +168,12 @@
 
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
+        if (submitBtn.disabled) return; // Doppel-Submit verhindern
         err.hidden = true; ok.hidden = true;
         const data = new FormData(form);
+        // Klar sichtbares Lade-Overlay + Button sperren, damit nicht mehrfach geschickt wird.
+        overlay.hidden = false;
+        submitBtn.disabled = true;
         try {
           await uploadSticker({
             file: data.get("file"),
@@ -153,11 +187,15 @@
           form.reset();
           picker.clear();
           if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
-          preview.hidden = true; preview.src = "";
+          preview.hidden = true; preview.removeAttribute("src");
+          videoPreview.hidden = true; videoPreview.removeAttribute("src");
           form.found_at.value = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
         } catch (ex) {
           err.textContent = ex.message;
           err.hidden = false;
+        } finally {
+          overlay.hidden = true;
+          submitBtn.disabled = false;
         }
       });
     </script>

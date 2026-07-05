@@ -405,12 +405,25 @@ body {
 .image-card:hover {
   transform: scale(1.02);
 }
-.image-card img {
+.image-card img,
+.image-card video {
   width: 100%;
   height: auto;
   object-fit: cover;
   display: block;
   height: 90%;
+}
+.video-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 2px 7px;
+  border-radius: 12px;
+  pointer-events: none;
 }
 .image-title {
   margin: 5px;
@@ -460,7 +473,8 @@ body {
   top: 50%;
   left: 50%;
 }
-.modal-content img {
+.modal-content img,
+.modal-content video {
   max-height: 50vh;
   border-radius: 8px;
   max-width: min(calc(90vw - 40px), 760px);
@@ -928,7 +942,8 @@ body {
   border-radius: 8px;
   background: #fff;
 }
-.admin-sticker-card img {
+.admin-sticker-card img,
+.admin-sticker-card video {
   width: 60px;
   height: 60px;
   object-fit: cover;
@@ -1243,7 +1258,8 @@ body {
   border-radius: 10px;
   background: #fafafa;
 }
-.my-sticker-row img {
+.my-sticker-row img,
+.my-sticker-row video {
   width: 80px;
   height: 80px;
   object-fit: cover;
@@ -1355,6 +1371,50 @@ body {
   object-fit: contain;
   display: block;
   align-self: start;
+}
+
+/* Lade-Overlay beim Upload */
+.upload-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.upload-overlay[hidden] {
+  display: none;
+}
+.upload-overlay-box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 32px;
+  text-align: center;
+  max-width: 340px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+.upload-overlay-title {
+  margin: 14px 0 6px;
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: var(--color-primary);
+}
+.upload-overlay-box small {
+  color: #666;
+}
+.spinner {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
+  border: 5px solid var(--color-light-gray);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 .edit-image-slot {
   position: relative;
@@ -1637,7 +1697,8 @@ body {
   padding: 10px;
   box-shadow: var(--box-shadow-light);
 }
-.sticker-card img {
+.sticker-card img,
+.sticker-card video {
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
@@ -1906,7 +1967,8 @@ button.sticker-card-btn:hover {
   padding: 20px 22px 22px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
-.lightbox-content img {
+.lightbox-content img,
+.lightbox-content video {
   width: 100%;
   max-height: 60vh;
   object-fit: contain;

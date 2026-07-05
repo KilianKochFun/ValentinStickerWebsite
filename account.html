@@ -148,6 +148,7 @@
       const { createMapPicker } = await import("./assets/js/map-picker.js");
       const { guessContinent, uploadImage } = await import("./assets/js/upload.js");
       const { STORAGE_BUCKET } = await import("./assets/js/config.js");
+      const { mediaTagHtml } = await import("./assets/js/sticker-view.js");
 
       const user = await currentUser();
       if (!user) {
@@ -278,7 +279,7 @@
           const row = document.createElement("div");
           row.className = "my-sticker-row";
           row.innerHTML = `
-            <img src="${url}" alt="" loading="lazy" />
+            ${mediaTagHtml(url)}
             <div>
               <h3>${escapeHtml(r.title || "(ohne Titel)")}${r.is_hidden ? '<span class="hidden-badge">versteckt</span>' : ""}</h3>
               <p>${escapeHtml(r.description || "")}</p>

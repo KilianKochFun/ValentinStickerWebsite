@@ -65,6 +65,7 @@
       <div class="lightbox-content">
         <button class="lightbox-close" aria-label="Schließen" data-lightbox-close>✕</button>
         <img id="lbImg" src="" alt="" />
+        <video id="lbVideo" controls playsinline hidden></video>
         <h3 id="lbTitle"></h3>
         <p id="lbDescription"></p>
         <p id="lbMeta" class="lightbox-meta"></p>
@@ -194,24 +195,31 @@
       document.getElementById("stickerGrid").addEventListener("click", (e) => {
         const btn = e.target.closest(".sticker-card-btn");
         if (!btn) return;
-        document.getElementById("lbImg").src         = btn.dataset.stickerUrl;
+        const lbImg = document.getElementById("lbImg");
+        const lbVideo = document.getElementById("lbVideo");
+        if (btn.dataset.stickerVideo) {
+          lbImg.hidden = true; lbImg.removeAttribute("src");
+          lbVideo.hidden = false; lbVideo.src = btn.dataset.stickerUrl;
+        } else {
+          lbVideo.pause(); lbVideo.hidden = true; lbVideo.removeAttribute("src");
+          lbImg.hidden = false; lbImg.src = btn.dataset.stickerUrl;
+        }
         document.getElementById("lbTitle").textContent       = btn.dataset.stickerTitle;
         document.getElementById("lbDescription").textContent = btn.dataset.stickerDescription;
         document.getElementById("lbMeta").textContent        = btn.dataset.stickerMeta;
         lb.classList.remove("hidden");
         document.body.style.overflow = "hidden";
       });
+      function closeLightbox() {
+        document.getElementById("lbVideo").pause();
+        lb.classList.add("hidden");
+        document.body.style.overflow = "";
+      }
       lb.addEventListener("click", (e) => {
-        if (e.target.matches("[data-lightbox-close]")) {
-          lb.classList.add("hidden");
-          document.body.style.overflow = "";
-        }
+        if (e.target.matches("[data-lightbox-close]")) closeLightbox();
       });
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && !lb.classList.contains("hidden")) {
-          lb.classList.add("hidden");
-          document.body.style.overflow = "";
-        }
+        if (e.key === "Escape" && !lb.classList.contains("hidden")) closeLightbox();
       });
     </script>
   </body>

@@ -7,7 +7,7 @@
 
 import { supabase, imageUrlFor, currentProfile } from "./supabase-client.js";
 import { submitQuizRun, fetchTopScores, fetchUserBest } from "./quiz.js";
-import { escapeHtml } from "./sticker-view.js";
+import { escapeHtml, isVideoPath } from "./sticker-view.js";
 import { initPunchingBag } from "./punching-bag.js";
 
 const SFX = {
@@ -264,7 +264,10 @@ async function boot() {
     clueText.textContent = "Konnte Sticker nicht laden. Bitte Seite neu laden.";
     return;
   }
-  pool = (data ?? []).filter((s) => (s[CLUE_FIELD] ?? "").trim().length >= MIN_LEN);
+  // Videos aus dem Quiz raushalten – im Quiz will man schnell durchklicken,
+  // da sind Videos nur störend.
+  pool = (data ?? []).filter((s) =>
+    (s[CLUE_FIELD] ?? "").trim().length >= MIN_LEN && !isVideoPath(s.image_path));
   if (pool.length < 3) {
     clueText.textContent = `Zu wenig Sticker mit ${MODE === "description" ? "Beschreibung" : "Titel"} im Pool (min. 3 nötig).`;
     return;

@@ -8,6 +8,20 @@ export function escapeHtml(s) {
   }[c]));
 }
 
+// Erkennt ein Video an der Datei-Endung (auch am fertigen Public-URL).
+export function isVideoPath(p) {
+  return /\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(String(p ?? ""));
+}
+
+// Liefert <video> für Videos, sonst <img>. `extra` sind zusätzliche Attribute.
+// Videos ohne controls zeigen dank preload="metadata" das erste Bild als Vorschau.
+export function mediaTagHtml(url, { alt = "", lazy = true, extra = "" } = {}) {
+  if (isVideoPath(url)) {
+    return `<video src="${url}#t=0.1" muted playsinline preload="metadata" ${extra}></video>`;
+  }
+  return `<img src="${url}" alt="${alt}"${lazy ? ' loading="lazy"' : ""} ${extra} />`;
+}
+
 export function fmtDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -50,15 +64,16 @@ export function stickerCardHtml(s, { showMeta = true, clickable = false } = {}) 
         data-sticker-url="${url}"
         data-sticker-title="${title}"
         data-sticker-description="${description}"
+        data-sticker-video="${isVideoPath(url) ? "1" : ""}"
         data-sticker-meta="${s.latitude?.toFixed?.(4) ?? "?"}, ${s.longitude?.toFixed?.(4) ?? "?"} – ${fmtDate(s.found_at)}${s.is_legacy ? " – Legacy" : ""}">
-        <img src="${url}" alt="" loading="lazy" />
+        ${mediaTagHtml(url)}
         ${meta}
       </button>
     `;
   }
   return `
     <div class="sticker-card">
-      <img src="${url}" alt="" loading="lazy" />
+      ${mediaTagHtml(url)}
       ${meta}
     </div>
   `;

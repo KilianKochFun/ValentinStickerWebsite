@@ -99,6 +99,7 @@
     <script type="module">
       import { supabase, currentProfile, imageUrlFor } from "./assets/js/supabase-client.js";
       import { SUPABASE_URL, SUPABASE_ANON_KEY, STORAGE_BUCKET } from "./assets/js/config.js";
+      import { mediaTagHtml } from "./assets/js/sticker-view.js";
 
       function escapeHtml(s) {
         return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -234,7 +235,7 @@
           const row = document.createElement("div");
           row.className = "admin-sticker-card";
           row.innerHTML = `
-            <img src="${url}" alt="" loading="lazy" />
+            ${mediaTagHtml(url)}
             <div class="admin-sticker-info">
               <strong>${escapeHtml(r.title || "(ohne Titel)")}</strong>
               ${r.is_hidden ? '<span class="hidden-badge">versteckt</span>' : ""}${r.is_legacy ? '<span class="hidden-badge">Legacy</span>' : ""}

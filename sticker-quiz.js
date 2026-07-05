@@ -3,8 +3,8 @@
    Welcher Sticker ist weiter von Aachen entfernt?
    ============================================================ */
 
-// Aachen Mitte (Elisenbrunnen)
-const AACHEN = [50.7753, 6.0839];
+// Aachen Mitte – identisch mit dem Anker in script.js/config (Online-Entfernungen)
+const AACHEN = [50.7763, 6.0836];
 
 // ── Sounds ────────────────────────────────────────────────
 const SFX = {

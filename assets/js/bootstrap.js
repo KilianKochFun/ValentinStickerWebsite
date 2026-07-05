@@ -56,6 +56,7 @@
       image: row.image_path
         ? sb.storage.from(bucket).getPublicUrl(row.image_path).data.publicUrl
         : placeholder,
+      isVideo: /\.(mp4|webm|mov|m4v|ogg)$/i.test(row.image_path || ""),
       time: row.found_at ? new Date(row.found_at) : new Date(),
       finder: row.profiles?.display_name || row.legacy_finder_name || "Anonym",
       title: row.title || "",
