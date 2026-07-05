@@ -185,7 +185,9 @@
       <h2>5. Externe Inhalte und Dienste (CDN, Schriftarten)</h2>
       <p>
         Zur schnellen Auslieferung von JavaScript- und CSS-Bibliotheken werden
-        externe Ressourcen über CDNs (z. B. unpkg.com) eingebunden. Dabei wird
+        externe Ressourcen über CDNs eingebunden – konkret
+        <strong>cdn.jsdelivr.net</strong> (Karten-Bibliothek Leaflet) und
+        <strong>esm.sh</strong> (Supabase-Client-Bibliothek). Dabei wird
         Ihre IP-Adresse an den jeweiligen CDN-Anbieter übertragen.
         Web-Schriftarten werden lokal gehostet, um eine Übertragung an externe
         Anbieter (z. B. Google Fonts) zu vermeiden.
@@ -199,8 +201,9 @@
       <hr />
       <h2>6. Registrierung, Upload und Kommentare (Supabase)</h2>
       <p>
-        Sofern die Funktionen „Registrierung", „Sticker hochladen" oder
-        „Kommentieren" genutzt werden, werden personenbezogene Daten über
+        Sofern die Funktionen „Registrierung", „Sticker hochladen",
+        „Kommentieren" oder „Reaktionen (Likes)" genutzt werden, werden
+        personenbezogene Daten über
         unseren Dienstleister <strong>Supabase Inc.</strong>, 970 Toa Payoh
         North #07-04, Singapur 318992, verarbeitet. Server-Standort der
         verwendeten Instanz ist <strong>Frankfurt am Main, Deutschland
@@ -215,9 +218,11 @@
       <ul>
         <li>E-Mail-Adresse und Passwort-Hash (für die Anmeldung)</li>
         <li>Selbst gewählter Anzeigename</li>
-        <li>Hochgeladene Sticker-Bilder sowie die dazu angegebenen Metadaten
-            (Titel, Beschreibung, Fund-Koordinaten, Fund-Zeitpunkt)</li>
+        <li>Hochgeladene Sticker-Bilder und -Videos sowie die dazu angegebenen
+            Metadaten (Titel, Beschreibung, Fund-Koordinaten, Fund-Zeitpunkt)</li>
         <li>Kommentartexte</li>
+        <li>Reaktionen („Likes") zu einzelnen Stickern (d. h. die Zuordnung,
+            welcher Nutzer welchen Sticker mit „Gefällt mir" markiert hat)</li>
         <li>Technisch anfallende IP-Adressen und Zugriffszeiten beim Aufruf der
             Supabase-API (zur Abwehr von Missbrauch)</li>
       </ul>
@@ -226,6 +231,14 @@
         (Vertragserfüllung gegenüber dem registrierten Nutzer) sowie Art. 6
         Abs. 1 lit. f DSGVO (berechtigtes Interesse an Betrieb und Sicherheit
         der Community-Funktionen).
+      </p>
+      <p>
+        <strong>Hochgeladene Medien:</strong> Bilder und Videos können
+        personenbezogene Daten abgebildeter Dritter enthalten (z. B. Gesichter
+        oder Stimmen). Nutzer dürfen nur Medien hochladen, an denen sie die
+        erforderlichen Rechte besitzen und die keine Rechte Dritter verletzen.
+        Auf einen entsprechenden Hinweis hin entfernen wir rechtsverletzende
+        Inhalte.
       </p>
       <p>
         <strong>Speicherdauer:</strong> Die Daten bleiben gespeichert, bis der
@@ -276,7 +289,7 @@
         Drittanbieter verweisen wir auf deren eigene Datenschutzerklärungen.
         Diese Datenschutzerklärung wird bei Bedarf aktualisiert, um Änderungen
         in der Datenverarbeitung oder Rechtslage Rechnung zu tragen. (Stand:
-        April 2026)
+        Juli 2026)
       </p>
       <p>
         Quelle/Referenzen: e-recht24, IT-Recht Kanzlei, Datenschutz-Generator.
