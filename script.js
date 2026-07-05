@@ -12,6 +12,19 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(map);
 
+// Bezugspunkt „Aachener Mitte" – auffälliger, dicker Marker (kein Standard-Pin),
+// weil alle Entfernungen zu diesem Punkt berechnet werden.
+const centerIcon = L.divIcon({
+  className: "center-marker",
+  html: '<div class="center-marker-pulse"></div><div class="center-marker-dot"></div>',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  popupAnchor: [0, -14],
+});
+L.marker(AACHEN_CENTER, { icon: centerIcon, zIndexOffset: 1000, title: "Aachener Mitte" })
+  .addTo(map)
+  .bindPopup("<strong>📍 Aachener Mitte</strong><br>Bezugspunkt für alle Entfernungen");
+
 // Get unique authors from 'locations'
 const uniqueAuthors = new Set(locations.map((loc) => loc.finder || "Unknown"));
 // Insert as <option>
@@ -32,8 +45,10 @@ const closeModal = document.getElementById("closeModal");
 const modalImage = document.getElementById("modalImage");
 const modalTitle = document.getElementById("modalTitle");
 const modalDescription = document.getElementById("modalDescription");
+const shareStickerBtn = document.getElementById("shareStickerBtn");
 
 let mapHidden = false; // Track map visibility
+let currentModalLoc = null; // aktuell im Vollbild geöffneter Sticker
 
 if (locations.length != 0) {
   gallery.innerHTML = "";
@@ -42,7 +57,7 @@ if (locations.length != 0) {
 // Galerie-Pagination: Marker rendern wir für ALLE Sticker sofort (damit die
 // Karte vollständig ist). Die Galerie rendert pro Seite nur PAGE_SIZE Karten,
 // sonst werden bei >100 Stickern zu viele Bild-Requests auf einmal gefeuert.
-const GALLERY_PAGE_SIZE = 40;
+const GALLERY_PAGE_SIZE = 12;
 let galleryFilteredIndices = [];   // Indices aus `locations` nach aktuellem Filter
 let galleryPage = 0;
 
@@ -74,6 +89,13 @@ locations.forEach((loc, index) => {
     Entfernung zur Aachener Mitte: <strong>${distText}</strong>
   </p>
 `;
+  if (loc.commentCount > 0) {
+    popupDiv.innerHTML += `
+  <p style="text-align: left; font-size: 0.9em; color: #555;">
+    💬 <strong>${loc.commentCount}</strong> Kommentar${loc.commentCount === 1 ? "" : "e"}
+  </p>
+`;
+  }
 
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.innerHTML = "🖥️ Vollbild anzeigen";
@@ -115,6 +137,16 @@ locations.forEach((loc, index) => {
   });
 });
 
+// Fliegt auf der Karte zum Sticker UND scrollt die Karte vollständig ins Bild.
+// Wichtig auf Mobil: dort liegt die Karte oben, ein Klick weiter unten würde
+// sonst nichts sichtbar bewegen.
+function focusStickerOnMap(loc) {
+  map.setView(loc.position, 17);
+  if (loc.marker) loc.marker.openPopup();
+  const mapEl = document.getElementById("map");
+  if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function buildGalleryCard(index) {
   const loc = locations[index];
   const imageCard = document.createElement("div");
@@ -124,13 +156,13 @@ function buildGalleryCard(index) {
   <img src="${loc.image}" alt="${loc.title}" loading="lazy">
   <p class="image-title">${loc.title}</p>
   <p class="finder-info">Gefunden von <strong>${loc.finder}</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
+  ${loc.commentCount > 0 ? `<span class="comment-count-badge">💬 ${loc.commentCount}</span>` : ""}
 `;
   imageCard.onclick = () => {
     if (mapHidden) {
       openFullscreen(loc);
     } else {
-      map.setView(loc.position, 17);
-      if (loc.marker) loc.marker.openPopup();
+      focusStickerOnMap(loc);
     }
   };
   return imageCard;
@@ -193,10 +225,46 @@ function renderGalleryPage() {
 galleryFilteredIndices = locations.map((_, i) => i);
 renderGalleryPage();
 
+// Deep-Link: ?sticker=<id> öffnet direkt den passenden Sticker im Vollbild.
+// Auf `load` warten, damit die Kommentar-/Like-Module ihre Listener schon haben.
+window.addEventListener("load", () => {
+  const deepId = new URLSearchParams(location.search).get("sticker");
+  if (!deepId) return;
+  const loc = locations.find((l) => l.id === deepId);
+  if (!loc) return;
+  if (!mapHidden) map.setView(loc.position, 15);
+  openFullscreen(loc);
+});
+
+// Kommentar-Zähler live aktualisieren, wenn im Modal kommentiert/gelöscht wird.
+document.addEventListener("comment:changed", (e) => {
+  const { id, count } = e.detail || {};
+  const loc = locations.find((l) => l.id === id);
+  if (!loc) return;
+  loc.commentCount = count;
+  const idx = locations.indexOf(loc);
+  const card = gallery.querySelector(`.image-card[data-index="${idx}"]`);
+  if (!card) return;
+  let badge = card.querySelector(".comment-count-badge");
+  if (count > 0) {
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "comment-count-badge";
+      card.appendChild(badge);
+    }
+    badge.textContent = `💬 ${count}`;
+  } else if (badge) {
+    badge.remove();
+  }
+});
+
 // Fügt Entfernung im Modal hinzu (openFullscreen)
 function openFullscreen(loc) {
   // Save focus and show modal
   lastFocusedElement = document.activeElement;
+  currentModalLoc = loc;
+  // Deep-Link setzen, damit die Adresszeile den offenen Sticker zeigt (teilbar).
+  if (loc.id) history.replaceState(null, "", location.pathname + "?sticker=" + loc.id);
   modal.style.display = "block";
   modalImage.src = loc.image;
   modalImage.alt = loc.title;
@@ -209,6 +277,10 @@ function openFullscreen(loc) {
 
   modalMeta.innerHTML = `Gefunden von <strong>${loc.finder}</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}<br>
   Entfernung zur Aachener Mitte: <strong>${distText}</strong>`;
+
+  // Kommentare für diesen Sticker laden (assets/js/comments.js hört auf dieses Event).
+  document.dispatchEvent(new CustomEvent("sticker:open", { detail: { id: loc.id, title: loc.title } }));
+
   // Focus close button for accessibility
   closeModal.focus();
 }
@@ -216,8 +288,28 @@ function openFullscreen(loc) {
 // Schließen per Button
 closeModal.onclick = closeFullscreen;
 
+// Teilen: Link zum aktuell geöffneten Sticker in die Zwischenablage kopieren.
+if (shareStickerBtn) {
+  shareStickerBtn.addEventListener("click", async () => {
+    if (!currentModalLoc?.id) return;
+    const url = location.origin + location.pathname + "?sticker=" + currentModalLoc.id;
+    try {
+      await navigator.clipboard.writeText(url);
+      const prev = shareStickerBtn.textContent;
+      shareStickerBtn.textContent = "✅ Link kopiert!";
+      setTimeout(() => { shareStickerBtn.textContent = prev; }, 1600);
+    } catch {
+      prompt("Link zum Teilen:", url);
+    }
+  });
+}
+
 function closeFullscreen() {
   modal.style.display = "none";
+  currentModalLoc = null;
+  document.dispatchEvent(new CustomEvent("sticker:close"));
+  // Deep-Link-Parameter wieder aus der Adresszeile entfernen.
+  if (location.search) history.replaceState(null, "", location.pathname);
   // Restore focus
   if (lastFocusedElement) lastFocusedElement.focus();
 }
@@ -389,39 +481,86 @@ function updateLeaderboard() {
 
 updateLeaderboard();
 
-// 4) Build the distance leaderboard for top 3 furthest stickers
+// 4) Entfernungs-Rangliste (alle Sticker nach Distanz zur Aachener Mitte).
+// Wird seitenweise angezeigt, damit die Liste bei vielen Stickern nicht
+// endlos lang wird – die Finder-Rangliste bleibt dagegen komplett.
+const DISTANCE_PAGE_SIZE = 10;
+let distanceSorted = [];
+let distancePage = 0;
+
 function updateDistanceLeaderboard() {
+  const list = document.getElementById("distanceLeaderboardList");
+  if (!list) return;
+  // Distanzen einmalig berechnen und absteigend sortieren.
+  distanceSorted = locations
+    .map((loc) => ({ loc, dist: calculateDistance(loc.position, AACHEN_CENTER) }))
+    .sort((a, b) => b.dist - a.dist);
+  distancePage = 0;
+  renderDistanceLeaderboardPage();
+}
+
+function renderDistanceLeaderboardPage() {
   const list = document.getElementById("distanceLeaderboardList");
   if (!list) return;
   list.innerHTML = "";
 
-  // Compute distances for each location relative to Aachen center
-  const distArray = locations.map((loc) => ({ loc, dist: calculateDistance(loc.position, AACHEN_CENTER) }));
-  // Sort descending by distance
-  distArray.sort((a, b) => b.dist - a.dist);
-  // Take top 3
-  const top3 = distArray;
+  // Vorhandene Blätter-Leiste entfernen (wird ggf. neu aufgebaut).
+  const oldNav = document.getElementById("distanceLeaderboardNav");
+  if (oldNav) oldNav.remove();
 
-  top3.forEach((item, index) => {
-    const { loc, dist } = item;
+  if (distanceSorted.length === 0) {
     const li = document.createElement("li");
-    // Medal icon for rank
-    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "🎗";
-    // Format distance text
+    li.textContent = "Noch keine Sticker gefunden.";
+    li.style.cursor = "default";
+    list.appendChild(li);
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(distanceSorted.length / DISTANCE_PAGE_SIZE));
+  if (distancePage >= totalPages) distancePage = totalPages - 1;
+  if (distancePage < 0) distancePage = 0;
+
+  const start = distancePage * DISTANCE_PAGE_SIZE;
+  const end = Math.min(start + DISTANCE_PAGE_SIZE, distanceSorted.length);
+
+  for (let i = start; i < end; i++) {
+    const { loc, dist } = distanceSorted[i];
+    const rank = i + 1; // globaler Platz über alle Seiten hinweg
+    const li = document.createElement("li");
+    const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}.`;
     const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
-    // Build list item: medal, sticker title and author, distance
     li.innerHTML = `
       <span class="medal">${medal}</span>
       <span class="leaderboard-author">${loc.title} (von ${loc.finder || "Unknown"})</span>
       <span class="count">${distText}</span>
     `;
-    // Navigate map to sticker on click
-    li.addEventListener("click", () => {
-      map.setView(loc.position, 17);
-      if (loc.marker) loc.marker.openPopup();
-    });
+    li.addEventListener("click", () => focusStickerOnMap(loc));
     list.appendChild(li);
-  });
+  }
+
+  // Blätter-Leiste nur zeigen, wenn es mehr als eine Seite gibt.
+  if (totalPages > 1) {
+    const nav = document.createElement("div");
+    nav.id = "distanceLeaderboardNav";
+    nav.className = "leaderboard-pagination";
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.textContent = "← Zurück";
+    prev.disabled = distancePage === 0;
+    prev.onclick = () => { distancePage--; renderDistanceLeaderboardPage(); };
+    const info = document.createElement("span");
+    info.className = "gallery-page-info";
+    info.textContent = `Seite ${distancePage + 1} von ${totalPages} (${distanceSorted.length} Sticker)`;
+    const next = document.createElement("button");
+    next.type = "button";
+    next.textContent = "Weiter →";
+    next.disabled = distancePage >= totalPages - 1;
+    next.onclick = () => { distancePage++; renderDistanceLeaderboardPage(); };
+    nav.appendChild(prev);
+    nav.appendChild(info);
+    nav.appendChild(next);
+    list.parentElement.appendChild(nav);
+  }
 }
 
 // Initialize distance leaderboard

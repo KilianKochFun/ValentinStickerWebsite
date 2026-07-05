@@ -480,6 +480,176 @@ body {
   background-color: #45a049;
 }
 
+/* KOMMENTARE (im Vollbild-Modal) */
+.modal-comments {
+  text-align: left;
+  margin-top: 18px;
+  border-top: 2px solid var(--color-light-gray);
+  padding-top: 12px;
+}
+.comments-title {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+.comments-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-item {
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-light-gray);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.comment-author {
+  font-weight: bold;
+  color: #333;
+}
+.comment-date {
+  font-size: 0.8rem;
+  color: #888;
+}
+.comment-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  opacity: 0.6;
+}
+.comment-delete:hover {
+  opacity: 1;
+}
+.comment-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #222;
+}
+.comments-empty,
+.comments-loading,
+.comments-login {
+  color: #666;
+  margin: 0 0 12px;
+}
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 6px;
+  border: 2px solid var(--color-primary);
+  resize: vertical;
+  font-family: inherit;
+}
+.comment-form button {
+  align-self: flex-end;
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.comment-form button:disabled {
+  background: #bbb;
+  cursor: not-allowed;
+}
+.comment-error {
+  color: #b71c1c;
+  margin: 0;
+}
+.comments-login a {
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+/* Like-Button & Teilen im Modal */
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--color-bg-light);
+  border: 2px solid var(--color-light-gray);
+  border-radius: 20px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #333;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+}
+.like-btn:hover:not(:disabled) {
+  border-color: #e53935;
+}
+.like-btn:active {
+  transform: scale(0.95);
+}
+.like-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.like-btn.liked {
+  border-color: #e53935;
+  background: #fff0f0;
+}
+.modal-share-btn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+.modal-share-btn:hover {
+  background: #3d8b40;
+}
+
+/* Kommentar-Zähler-Badge auf Galerie-Karten */
+.image-card {
+  position: relative;
+}
+.comment-count-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
 /* FOOTER */
 .footer {
   text-align: center;
@@ -672,6 +842,114 @@ body {
   color: var(--color-primary);
   font-weight: bold;
   white-space: nowrap;
+}
+
+/* Blätter-Leiste in Ranglisten (z. B. Entfernungs-Rangliste) */
+.leaderboard-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 8px 0;
+  flex-wrap: wrap;
+}
+.leaderboard-pagination button {
+  background-color: var(--color-primary);
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: bold;
+  transition: background-color 0.15s ease;
+}
+.leaderboard-pagination button:hover:not(:disabled) {
+  background-color: #3d8b40;
+}
+.leaderboard-pagination button:disabled {
+  background-color: #bbb;
+  cursor: not-allowed;
+}
+
+/* Bezugspunkt-Marker „Aachener Mitte" auf der Karte (dick, auffällig) */
+.center-marker {
+  background: transparent;
+  border: none;
+}
+.center-marker-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #e53935;
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 2px #b71c1c, 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+.center-marker-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(229, 57, 53, 0.35);
+  animation: centerPulse 1.8s ease-out infinite;
+}
+@keyframes centerPulse {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+
+/* ADMIN: alle Sticker verwalten */
+#adminStickerSearch {
+  width: 100%;
+  padding: 8px;
+  border-radius: 6px;
+  border: 2px solid var(--color-primary);
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+.admin-stickers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.admin-sticker-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 1px solid var(--color-light-gray);
+  border-radius: 8px;
+  background: #fff;
+}
+.admin-sticker-card img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.admin-sticker-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-sticker-info small {
+  color: #666;
+}
+.admin-sticker-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 /* SELECT + SUCHE */

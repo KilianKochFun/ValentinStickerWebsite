@@ -16,7 +16,7 @@
     <!-- Banner with Valentinsticker Logo/Title -->
     <header class="banner">
       <div class="banner-content">
-        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
         <h1>Valentinsticker.de</h1>
         <nav class="button-nav">
           <button id="quizNavBtn" onclick="window.location.href='quiz'">🧠 Quizze</button>
@@ -143,6 +143,11 @@
         <h2 id="modalTitle"></h2>
         <p id="modalDescription"></p>
         <p id="modalMeta" class="modal-meta"></p>
+        <div class="modal-actions">
+          <div id="modalLikes"></div>
+          <button id="shareStickerBtn" type="button" class="modal-share-btn">🔗 Teilen</button>
+        </div>
+        <section id="modalComments" class="modal-comments" hidden></section>
         <button id="closeModal" class="modal-close-btn">
           Fenster schließen
         </button>
@@ -159,6 +164,12 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
     <script src="assets/js/config-global.js"></script>
     <script src="assets/js/bootstrap.js" data-main="script.js"></script>
+
+    <!-- Kommentare pro Sticker (im Vollbild-Modal) -->
+    <script type="module" src="assets/js/comments.js"></script>
+
+    <!-- Likes/Reaktionen pro Sticker (im Vollbild-Modal) -->
+    <script type="module" src="assets/js/likes.js"></script>
 
     <!-- Auth-Nav: zeigt Login/Upload/Account je nach Session -->
     <script type="module">

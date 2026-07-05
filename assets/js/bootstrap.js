@@ -40,7 +40,7 @@
     const { data, error } = await sb
       .from("stickers")
       .select(
-        "id, uploader_id, legacy_finder_name, image_path, is_legacy, title, description, latitude, longitude, found_at, profiles:uploader_id(display_name)"
+        "id, uploader_id, legacy_finder_name, image_path, is_legacy, title, description, latitude, longitude, found_at, profiles:uploader_id(display_name), comments(count)"
       )
       .eq("is_hidden", false)
       .order("found_at", { ascending: true });
@@ -51,6 +51,7 @@
     const bucket = cfg.STORAGE_BUCKET || "stickers";
     const placeholder = "img/valentinSticker.webp";
     return data.map((row) => ({
+      id: row.id,
       position: [row.latitude, row.longitude],
       image: row.image_path
         ? sb.storage.from(bucket).getPublicUrl(row.image_path).data.publicUrl
@@ -59,6 +60,7 @@
       finder: row.profiles?.display_name || row.legacy_finder_name || "Anonym",
       title: row.title || "",
       description: row.description || "",
+      commentCount: row.comments?.[0]?.count ?? 0,
     }));
   }
 

@@ -10,7 +10,7 @@
   <body>
     <header class="banner">
       <div class="banner-content">
-        <img src="img/valentinSticker.webp" alt="Valentinsticker Logo" />
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
         <h1>Admin</h1>
         <nav class="button-nav" style="margin-left: auto;">
           <button onclick="window.location.href='index'">🏠 Zurück</button>
@@ -64,6 +64,18 @@
       </section>
 
       <section class="admin-section">
+        <h2>Alle Sticker verwalten</h2>
+        <p class="auth-hint">
+          Hier siehst du alle Sticker (auch versteckte). Du kannst fremde Sticker
+          verstecken/einblenden oder endgültig löschen.
+        </p>
+        <input type="text" id="adminStickerSearch" placeholder="Suche nach Titel oder Finder…" />
+        <div id="adminStickersList" class="admin-stickers-list"></div>
+        <p id="adminStickersEmpty" class="auth-hint" hidden>Keine Sticker gefunden.</p>
+        <div id="adminStickersNav" class="leaderboard-pagination"></div>
+      </section>
+
+      <section class="admin-section">
         <h2>Legacy-Finder einem User zuordnen</h2>
         <form id="mergeForm" class="auth-form">
           <label>
@@ -85,8 +97,12 @@
 
     <script src="assets/js/config-global.js"></script>
     <script type="module">
-      import { supabase, currentProfile } from "./assets/js/supabase-client.js";
-      import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./assets/js/config.js";
+      import { supabase, currentProfile, imageUrlFor } from "./assets/js/supabase-client.js";
+      import { SUPABASE_URL, SUPABASE_ANON_KEY, STORAGE_BUCKET } from "./assets/js/config.js";
+
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+      }
 
       const profile = await currentProfile();
       if (!profile?.is_admin) {
@@ -167,10 +183,121 @@
           (users ?? []).map((u) => `<option value="${u.id}">${u.display_name}</option>`).join("");
       }
 
+      // ---------- Alle Sticker verwalten ----------
+      const ADMIN_STICKER_PAGE_SIZE = 12;
+      let adminAllStickers = [];
+      let adminFilteredStickers = [];
+      let adminStickerPage = 0;
+
+      function stickerFinderName(r) {
+        return r.profiles?.display_name || r.legacy_finder_name || "Anonym";
+      }
+
+      async function fetchAllStickers() {
+        const { data, error } = await supabase
+          .from("stickers")
+          .select("id, title, description, image_path, is_hidden, is_legacy, uploader_id, legacy_finder_name, found_at, profiles:uploader_id(display_name)")
+          .order("found_at", { ascending: false });
+        if (error) { console.error(error); return []; }
+        return data ?? [];
+      }
+
+      function filterAdminStickers() {
+        const q = (document.getElementById("adminStickerSearch").value || "").trim().toLowerCase();
+        adminFilteredStickers = !q
+          ? adminAllStickers
+          : adminAllStickers.filter((r) =>
+              (r.title || "").toLowerCase().includes(q) ||
+              stickerFinderName(r).toLowerCase().includes(q));
+        adminStickerPage = 0;
+        renderAdminStickersPage();
+      }
+
+      function renderAdminStickersPage() {
+        const list = document.getElementById("adminStickersList");
+        const empty = document.getElementById("adminStickersEmpty");
+        const nav = document.getElementById("adminStickersNav");
+        list.innerHTML = "";
+        nav.innerHTML = "";
+        if (!adminFilteredStickers.length) { empty.hidden = false; return; }
+        empty.hidden = true;
+
+        const totalPages = Math.max(1, Math.ceil(adminFilteredStickers.length / ADMIN_STICKER_PAGE_SIZE));
+        if (adminStickerPage >= totalPages) adminStickerPage = totalPages - 1;
+        if (adminStickerPage < 0) adminStickerPage = 0;
+        const start = adminStickerPage * ADMIN_STICKER_PAGE_SIZE;
+        const end = Math.min(start + ADMIN_STICKER_PAGE_SIZE, adminFilteredStickers.length);
+
+        for (let i = start; i < end; i++) {
+          const r = adminFilteredStickers[i];
+          const url = imageUrlFor({ image_path: r.image_path });
+          const row = document.createElement("div");
+          row.className = "admin-sticker-card";
+          row.innerHTML = `
+            <img src="${url}" alt="" loading="lazy" />
+            <div class="admin-sticker-info">
+              <strong>${escapeHtml(r.title || "(ohne Titel)")}</strong>
+              ${r.is_hidden ? '<span class="hidden-badge">versteckt</span>' : ""}${r.is_legacy ? '<span class="hidden-badge">Legacy</span>' : ""}
+              <small>von ${escapeHtml(stickerFinderName(r))}</small>
+            </div>
+            <div class="admin-sticker-actions">
+              <button type="button" data-action="toggle" class="secondary-btn">${r.is_hidden ? "👁️ Einblenden" : "🙈 Verstecken"}</button>
+              <button type="button" data-action="delete" class="secondary-btn danger-btn">🗑️ Löschen</button>
+            </div>
+          `;
+          row.querySelector('[data-action="toggle"]').addEventListener("click", () => toggleStickerHidden(r));
+          row.querySelector('[data-action="delete"]').addEventListener("click", () => deleteAdminSticker(r));
+          list.appendChild(row);
+        }
+
+        if (totalPages > 1) {
+          const prev = document.createElement("button");
+          prev.type = "button"; prev.textContent = "← Zurück";
+          prev.disabled = adminStickerPage === 0;
+          prev.onclick = () => { adminStickerPage--; renderAdminStickersPage(); };
+          const info = document.createElement("span");
+          info.className = "gallery-page-info";
+          info.textContent = `Seite ${adminStickerPage + 1} von ${totalPages} (${adminFilteredStickers.length} Sticker)`;
+          const next = document.createElement("button");
+          next.type = "button"; next.textContent = "Weiter →";
+          next.disabled = adminStickerPage >= totalPages - 1;
+          next.onclick = () => { adminStickerPage++; renderAdminStickersPage(); };
+          nav.appendChild(prev); nav.appendChild(info); nav.appendChild(next);
+        }
+      }
+
+      async function toggleStickerHidden(r) {
+        const { error } = await supabase.from("stickers").update({ is_hidden: !r.is_hidden }).eq("id", r.id);
+        if (error) { alert("Ändern fehlgeschlagen: " + error.message); return; }
+        r.is_hidden = !r.is_hidden;
+        renderAdminStickersPage();
+      }
+
+      async function deleteAdminSticker(r) {
+        if (!confirm(`"${r.title || "(ohne Titel)"}" (von ${stickerFinderName(r)}) wirklich endgültig löschen?`)) return;
+        const { error } = await supabase.from("stickers").delete().eq("id", r.id);
+        if (error) { alert("Löschen fehlgeschlagen: " + error.message); return; }
+        // Bild aus Storage entfernen (Admin darf jedes Objekt löschen). Fehler
+        // ignorieren, falls das Bild gar nicht im Storage liegt (z. B. Legacy).
+        if (r.image_path) {
+          try { await supabase.storage.from(STORAGE_BUCKET).remove([r.image_path]); } catch (_) {}
+        }
+        adminAllStickers = adminAllStickers.filter((s) => s.id !== r.id);
+        filterAdminStickers();
+      }
+
+      async function initStickerManagement() {
+        adminAllStickers = await fetchAllStickers();
+        adminFilteredStickers = adminAllStickers;
+        document.getElementById("adminStickerSearch").addEventListener("input", filterAdminStickers);
+        renderAdminStickersPage();
+      }
+
       function initAdmin() {
         refreshOpenCodes();
         refreshLegacyMergeForm();
         refreshUserSelect();
+        initStickerManagement();
 
         const userActionForm = document.getElementById("userActionForm");
         const resetBtn = document.getElementById("resetPwBtn");
