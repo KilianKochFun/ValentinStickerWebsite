@@ -24,7 +24,6 @@
           <button id="toggleAnimationBtn">🎉 Animation an</button>
           <button id="settingsBtn">⚙️ Einstellungen</button>
           <button id="toggleCursorBtn">🖱️ Cursor Effekt</button>
-          <button id="toggleViewBtn">📷 Nur Galerie anzeigen</button>
           <button id="authUploadBtn" class="auth-nav-btn" hidden onclick="window.location.href='upload'">📤 Upload</button>
           <button id="authAdminBtn" class="auth-nav-btn" hidden onclick="window.location.href='admin'">🛡️ Admin</button>
           <button id="authAccountBtn" class="auth-nav-btn" hidden onclick="window.location.href='account'">👤 Mein Account</button>
@@ -40,7 +39,6 @@
         <button id="toggleAnimationBtnMobile">🎉 Animation an</button>
         <button id="settingsBtnMobile">⚙️ Einstellungen</button>
         <button id="toggleCursorBtnMobile">🖱️ Cursor Effekt</button>
-        <button id="toggleViewBtnMobile">📷 Nur Galerie anzeigen</button>
         <button id="authUploadBtnMobile" hidden onclick="window.location.href='upload'">📤 Sticker hochladen</button>
         <button id="authAdminBtnMobile" hidden onclick="window.location.href='admin'">🛡️ Admin</button>
         <button id="authAccountBtnMobile" hidden onclick="window.location.href='account'">👤 Mein Account</button>
@@ -103,6 +101,9 @@
           </select>
         </div>
 
+        <!-- Blätter-Leiste über der Galerie (außerhalb der scrollenden Box) -->
+        <div id="galleryPagination" class="gallery-pagination-wrap"></div>
+
         <!-- Vertical Gallery -->
         <div id="gallery">
           <p>Keine Sticker wurden bis jetzt gefunden!</p>
@@ -136,23 +137,30 @@
       </p>
     </div>
 
-    <!-- Fullscreen Modal -->
+    <!-- Fullscreen Modal – zweispaltig: links Medium, rechts Infos + Kommentare -->
     <div id="fullscreenModal" class="modal">
       <div class="modal-content">
-        <img id="modalImage" src="" alt="" />
-        <video id="modalVideo" class="modal-media" controls playsinline hidden></video>
-        <h2 id="modalTitle"></h2>
-        <p id="modalDescription"></p>
-        <p id="modalMeta" class="modal-meta"></p>
-        <div class="modal-actions">
-          <div id="modalLikes"></div>
-          <button id="shareStickerBtn" type="button" class="modal-share-btn">🔗 Teilen</button>
+        <button id="closeModal" class="modal-x-btn" aria-label="Fenster schließen">✕</button>
+        <div class="modal-media-col">
+          <img id="modalImage" src="" alt="" />
+          <video id="modalVideo" class="modal-media" controls playsinline hidden></video>
         </div>
-        <section id="modalComments" class="modal-comments" hidden></section>
-        <button id="closeModal" class="modal-close-btn">
-          Fenster schließen
-        </button>
+        <div class="modal-info-col">
+          <h2 id="modalTitle"></h2>
+          <p id="modalDescription"></p>
+          <p id="modalMeta" class="modal-meta"></p>
+          <div class="modal-actions">
+            <div id="modalLikes"></div>
+            <button id="shareStickerBtn" type="button" class="modal-share-btn">🔗 Teilen</button>
+          </div>
+          <section id="modalComments" class="modal-comments" hidden></section>
+        </div>
       </div>
+    </div>
+
+    <!-- Bild-Zoom über dem Modal (Klick aufs Bild) -->
+    <div id="zoomOverlay" class="zoom-overlay" hidden>
+      <img id="zoomImage" src="" alt="" />
     </div>
 
     <!-- Footer with Impressum & Datenschutz -->

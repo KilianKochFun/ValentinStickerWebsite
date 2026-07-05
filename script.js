@@ -16,10 +16,12 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 // weil alle Entfernungen zu diesem Punkt berechnet werden.
 const centerIcon = L.divIcon({
   className: "center-marker",
-  html: '<div class="center-marker-pulse"></div><div class="center-marker-dot"></div>',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-  popupAnchor: [0, -14],
+  html: '<svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">'
+    + '<path d="M12.5 0C5.6 0 0 5.6 0 12.5 0 21 12.5 41 12.5 41S25 21 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="#e53935" stroke="#fff" stroke-width="1.5"/>'
+    + '<circle cx="12.5" cy="12.5" r="4.5" fill="#fff"/></svg>',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [0, -36],
 });
 L.marker(AACHEN_CENTER, { icon: centerIcon, zIndexOffset: 1000, title: "Aachener Mitte" })
   .addTo(map)
@@ -39,7 +41,6 @@ uniqueAuthors.forEach((author) => {
 // DOM Elements
 const gallery = document.getElementById("gallery");
 const searchInput = document.getElementById("searchInput");
-const toggleViewBtn = document.getElementById("toggleViewBtn");
 const modal = document.getElementById("fullscreenModal");
 const closeModal = document.getElementById("closeModal");
 const modalImage = document.getElementById("modalImage");
@@ -47,6 +48,8 @@ const modalVideo = document.getElementById("modalVideo");
 const modalTitle = document.getElementById("modalTitle");
 const modalDescription = document.getElementById("modalDescription");
 const shareStickerBtn = document.getElementById("shareStickerBtn");
+const zoomOverlay = document.getElementById("zoomOverlay");
+const zoomImage = document.getElementById("zoomImage");
 
 let mapHidden = false; // Track map visibility
 let currentModalLoc = null; // aktuell im Vollbild geöffneter Sticker
@@ -181,6 +184,8 @@ function buildGalleryCard(index) {
 
 function renderGalleryPage() {
   gallery.innerHTML = "";
+  const pag = document.getElementById("galleryPagination");
+  if (pag) pag.innerHTML = "";
 
   if (galleryFilteredIndices.length === 0) {
     const msg = document.createElement("p");
@@ -200,19 +205,16 @@ function renderGalleryPage() {
     gallery.appendChild(buildGalleryCard(galleryFilteredIndices[i]));
   }
 
-  // Pagination-Leiste nur zeigen, wenn es mehr als eine Seite gibt.
-  if (totalPages > 1) {
+  // Blätter-Leiste ÜBER der Galerie (außerhalb der scrollenden Box), damit man
+  // zum Umblättern nicht erst in der Box scrollen muss.
+  if (pag && totalPages > 1) {
     const nav = document.createElement("div");
     nav.className = "gallery-pagination";
     const prev = document.createElement("button");
     prev.type = "button";
     prev.textContent = "← Zurück";
     prev.disabled = galleryPage === 0;
-    prev.onclick = () => {
-      galleryPage--;
-      renderGalleryPage();
-      gallery.scrollTop = 0;
-    };
+    prev.onclick = () => { galleryPage--; renderGalleryPage(); gallery.scrollTop = 0; };
     const info = document.createElement("span");
     info.className = "gallery-page-info";
     info.textContent = `Seite ${galleryPage + 1} von ${totalPages} (${galleryFilteredIndices.length} Sticker)`;
@@ -220,15 +222,11 @@ function renderGalleryPage() {
     next.type = "button";
     next.textContent = "Weiter →";
     next.disabled = galleryPage >= totalPages - 1;
-    next.onclick = () => {
-      galleryPage++;
-      renderGalleryPage();
-      gallery.scrollTop = 0;
-    };
+    next.onclick = () => { galleryPage++; renderGalleryPage(); gallery.scrollTop = 0; };
     nav.appendChild(prev);
     nav.appendChild(info);
     nav.appendChild(next);
-    gallery.appendChild(nav);
+    pag.appendChild(nav);
   }
 }
 
@@ -307,6 +305,19 @@ function openFullscreen(loc) {
 // Schließen per Button
 closeModal.onclick = closeFullscreen;
 
+// Bild-Zoom: Klick aufs Modal-Bild öffnet die Großansicht, Klick schließt sie.
+if (modalImage && zoomOverlay && zoomImage) {
+  modalImage.addEventListener("click", () => {
+    if (!modalImage.getAttribute("src")) return;
+    zoomImage.src = modalImage.src;
+    zoomOverlay.hidden = false;
+  });
+  zoomOverlay.addEventListener("click", () => {
+    zoomOverlay.hidden = true;
+    zoomImage.removeAttribute("src");
+  });
+}
+
 // Teilen: Link zum aktuell geöffneten Sticker in die Zwischenablage kopieren.
 if (shareStickerBtn) {
   shareStickerBtn.addEventListener("click", async () => {
@@ -326,6 +337,7 @@ if (shareStickerBtn) {
 function closeFullscreen() {
   modal.style.display = "none";
   if (modalVideo) modalVideo.pause();
+  if (zoomOverlay) { zoomOverlay.hidden = true; zoomImage.removeAttribute("src"); }
   currentModalLoc = null;
   document.dispatchEvent(new CustomEvent("sticker:close"));
   // Deep-Link-Parameter wieder aus der Adresszeile entfernen.
@@ -341,11 +353,15 @@ window.onclick = (event) => {
     closeFullscreen();
   }
 };
-// Close modal with ESC key
+// Close modal with ESC key (Zoom zuerst schließen, falls offen)
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && modal.style.display === 'block') {
-    closeFullscreen();
+  if (event.key !== 'Escape') return;
+  if (zoomOverlay && !zoomOverlay.hidden) {
+    zoomOverlay.hidden = true;
+    zoomImage.removeAttribute("src");
+    return;
   }
+  if (modal.style.display === 'block') closeFullscreen();
 });
 
 // Funktion zur Normalisierung von Text (ä -> ae, ö -> oe, ß -> ss etc.)
@@ -414,20 +430,6 @@ function filterGallery() {
 // Suchfunktion
 searchInput.addEventListener("input", filterGallery);
 authorSelect.addEventListener("change", filterGallery);
-
-// Ansicht umschalten: Galerie anzeigen / Karte anzeigen
-toggleViewBtn.addEventListener("click", () => {
-  mapHidden = !mapHidden;
-  if (mapHidden) {
-    document.body.classList.add("hide-map");
-    toggleViewBtn.textContent = "🗺️ Karte anzeigen";
-  } else {
-    document.body.classList.remove("hide-map");
-    toggleViewBtn.textContent = "📷 Nur Galerie anzeigen";
-    // Ensure map tiles render correctly after showing map
-    map.invalidateSize();
-  }
-});
 
 // 2) Build the leaderboard from the 'locations' array
 const leaderboardData = {};
@@ -608,7 +610,6 @@ const mobileMenu = document.getElementById('mobileMenu');
 const toggleAnimationBtnMobile = document.getElementById('toggleAnimationBtnMobile');
 const settingsBtnMobile = document.getElementById('settingsBtnMobile');
 const toggleCursorBtnMobile = document.getElementById('toggleCursorBtnMobile');
-const toggleViewBtnMobile = document.getElementById('toggleViewBtnMobile');
 
 // Settings sliders
 const speedSlider = document.getElementById('speedSlider');
@@ -944,17 +945,9 @@ if (toggleCursorBtnMobile && toggleCursorBtn) {
   });
 }
 
-if (toggleViewBtnMobile && toggleViewBtn) {
-  toggleViewBtnMobile.addEventListener('click', () => {
-    toggleViewBtn.click();
-    closeMobileMenu();
-  });
-}
-
 // Update mobile button text when desktop buttons change
 function updateMobileButtonText() {
   toggleAnimationBtnMobile.textContent = toggleAnimationBtn.textContent;
-  toggleViewBtnMobile.textContent = toggleViewBtn.textContent;
 }
 
 // Helper function to close mobile menu
@@ -966,11 +959,10 @@ function closeMobileMenu() {
 }
 
 // Update mobile buttons initially and when they change
-if (toggleAnimationBtn && toggleViewBtn && toggleAnimationBtnMobile && toggleViewBtnMobile) {
+if (toggleAnimationBtn && toggleAnimationBtnMobile) {
   updateMobileButtonText();
   const observer = new MutationObserver(updateMobileButtonText);
   observer.observe(toggleAnimationBtn, { childList: true, characterData: true, subtree: true });
-  observer.observe(toggleViewBtn, { childList: true, characterData: true, subtree: true });
 }
 
 // ============ 3D PUNCHING BAG ============
