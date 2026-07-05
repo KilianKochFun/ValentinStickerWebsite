@@ -1463,6 +1463,9 @@ body {
   display: block;
   align-self: start;
 }
+.upload-preview[hidden] {
+  display: none;
+}
 
 /* Lade-Overlay beim Upload */
 .upload-overlay {
