@@ -253,15 +253,24 @@ galleryFilteredIndices = locations.map((_, i) => i);
 renderGalleryPage();
 
 // Deep-Link: ?sticker=<id> öffnet direkt den passenden Sticker im Vollbild.
-// Auf `load` warten, damit die Kommentar-/Like-Module ihre Listener schon haben.
-window.addEventListener("load", () => {
+// NICHT auf `window.load` warten: script.js wird von bootstrap.js erst nach dem
+// Supabase-Fetch nachgeladen – da ist `load` oft schon gefeuert, der Handler
+// liefe dann nie. Die `locations` sind hier bereits vorhanden.
+function openDeepLinkSticker() {
   const deepId = new URLSearchParams(location.search).get("sticker");
   if (!deepId) return;
   const loc = locations.find((l) => l.id === deepId);
   if (!loc) return;
   if (!mapHidden) map.setView(loc.position, 15);
   openFullscreen(loc);
-});
+}
+// setTimeout(0) gibt den deferred Modulen (comments.js/likes.js) noch die Chance,
+// ihre sticker:open-Listener zu setzen, bevor das Modal das Event feuert.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => setTimeout(openDeepLinkSticker, 0));
+} else {
+  setTimeout(openDeepLinkSticker, 0);
+}
 
 // Kommentar-Zähler live aktualisieren, wenn im Modal kommentiert/gelöscht wird.
 document.addEventListener("comment:changed", (e) => {
