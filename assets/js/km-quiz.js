@@ -4,9 +4,23 @@
 import { supabase, imageUrlFor } from "./supabase-client.js";
 import { submitQuizRun, fetchTopScores, fetchUserBest } from "./quiz.js";
 import { escapeHtml, haversineKm, isVideoPath } from "./sticker-view.js";
+import { initPunchingBag } from "./punching-bag.js";
 
 const AACHEN = [50.7763, 6.0836];
 const DECIMALS = 2;
+
+const SFX = {
+  hit:       new Audio("sound/Hit.mp3"),
+  lost:      new Audio("sound/Lost.mp3"),
+  highscore: new Audio("sound/Highscore.mp3"),
+};
+function playSound(name) {
+  try {
+    const s = SFX[name];
+    s.currentTime = 0;
+    s.play().catch(() => {});
+  } catch (_) {}
+}
 
 const el = (id) => document.getElementById(id);
 let pool = [];
@@ -14,6 +28,16 @@ let current = null;
 let lastId = null;
 let score = 0;
 let over = false;
+let myBest = 0;
+let pendingScore = 0; // Schläge-Budget für den Punching-Bag
+let bag = null;
+
+// Punching-Bag-DOM
+const punchBtn  = el("kmPunchBtn");
+const punchSec  = el("kmPunchSection");
+const punchRem  = el("kmPunchRemaining");
+const punchBack = el("kmPunchBack");
+const bagCanvas = el("kmBagCanvas");
 
 function finderName(s) {
   return s.profiles?.display_name || s.legacy_finder_name || "Anonym";
@@ -87,8 +111,11 @@ function next() {
 function startGame() {
   score = 0;
   over = false;
+  pendingScore = 0;
   el("kmScore").textContent = "0";
   el("kmGameover").classList.remove("visible");
+  if (punchSec) punchSec.classList.add("hidden");
+  if (bag) bag.setPunches(0);
   el("kmPlay").style.display = "";
   showSticker();
 }
@@ -96,9 +123,10 @@ function startGame() {
 async function refreshMine() {
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes.user;
-  if (!user) { el("kmMyBest").textContent = "0"; return; }
+  if (!user) { myBest = 0; el("kmMyBest").textContent = "0"; return; }
   const best = await fetchUserBest(user.id, "distance_km");
-  el("kmMyBest").textContent = String(best?.score ?? 0);
+  myBest = best?.score ?? 0;
+  el("kmMyBest").textContent = String(myBest);
 }
 
 async function refreshHs() {
@@ -123,18 +151,28 @@ async function refreshHs() {
 async function gameOver(actual, guess) {
   over = true;
   el("kmPlay").style.display = "none";
-  el("kmGameover").classList.add("visible");
   el("kmGoScore").textContent = String(score);
   el("kmGoReveal").innerHTML =
     `Dein Tipp: <strong>${guess.toFixed(DECIMALS)} km</strong> · richtig war: <strong>${actual.toFixed(DECIMALS)} km</strong>`;
+  const isNewBest = score > 0 && score > myBest;
+  el("kmGoBest").textContent = String(Math.max(myBest, score));
+
+  // Punching-Bag: so viele Schläge wie Treffer.
+  pendingScore = score;
+  if (punchBtn) punchBtn.disabled = score === 0;
+  if (bag) bag.setPunches(score);
+
+  playSound(isNewBest ? "highscore" : "lost");
+
   const status = el("kmGoStatus");
   status.hidden = true;
   if (score > 0) {
     const res = await submitQuizRun("distance_km", score);
     if (res.saved) {
-      status.textContent = "Im Highscore gespeichert ✔";
+      myBest = Math.max(myBest, score);
+      status.textContent = isNewBest ? "🎉 Neuer persönlicher Highscore gespeichert!" : "Score gespeichert ✔";
       status.hidden = false;
-      await refreshMine();
+      el("kmMyBest").textContent = String(myBest);
       await refreshHs();
     } else if (res.reason === "guest") {
       status.innerHTML = 'Nicht gespeichert – <a href="login">einloggen</a> für den Highscore.';
@@ -144,7 +182,49 @@ async function gameOver(actual, guess) {
     status.textContent = "0 Treffer – schaff mindestens einen für den Highscore. 😉";
     status.hidden = false;
   }
-  el("kmGoBest").textContent = el("kmMyBest").textContent;
+
+  el("kmGameover").classList.add("visible");
+}
+
+// ── Punching Bag ──────────────────────────────────────────
+function updatePunchRemaining(n) {
+  if (!punchRem) return;
+  const remaining = typeof n === "number" ? n : bag?.getPunches() ?? 0;
+  if (remaining > 0) {
+    punchRem.textContent = `Noch ${remaining} Schlag${remaining !== 1 ? "e" : ""} übrig`;
+    punchRem.style.color = "#555";
+  } else {
+    punchRem.textContent = "🎉 Alle Schläge verbraucht!";
+    punchRem.style.color = "#2e7d32";
+  }
+}
+
+function openPunchingBag() {
+  if (pendingScore === 0) return;
+  el("kmGameover").classList.remove("visible");
+  punchSec.classList.remove("hidden");
+  if (!bag) {
+    bag = initPunchingBag({
+      canvas: bagCanvas,
+      initialPunches: pendingScore,
+      onPunch: (remaining) => {
+        updatePunchRemaining(remaining);
+        pendingScore = remaining;
+        if (remaining === 0 && punchBtn) punchBtn.disabled = true;
+      },
+      onEmpty: () => {
+        updatePunchRemaining(0);
+        if (punchBtn) punchBtn.disabled = true;
+      },
+    });
+  }
+  updatePunchRemaining(bag.getPunches());
+  if (punchBtn && bag.getPunches() === 0) punchBtn.disabled = true;
+}
+
+function closePunchingBag() {
+  punchSec.classList.add("hidden");
+  el("kmGameover").classList.add("visible");
 }
 
 // ── Events ────────────────────────────────────────────────
@@ -156,6 +236,8 @@ el("kmInput").addEventListener("keydown", (e) => {
   e.preventDefault();
   if (el("kmInput").disabled) next(); else submitGuess();
 });
+if (punchBtn)  punchBtn.addEventListener("click", openPunchingBag);
+if (punchBack) punchBack.addEventListener("click", closePunchingBag);
 
 // ── Init ──────────────────────────────────────────────────
 await loadPool();

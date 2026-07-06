@@ -61,10 +61,21 @@
         </div>
         <p id="kmGoStatus" class="sq-save-status" hidden></p>
         <button class="sq-restart-btn" id="kmRestart">Nochmal spielen 🔄</button>
+        <button class="sq-punch-btn" id="kmPunchBtn">👊 Valentin schlagen</button>
+      </div>
+
+      <!-- Punching Bag (erscheint nach Klick auf 👊-Button) -->
+      <div id="kmPunchSection" class="sq-punch-section hidden">
+        <div class="sq-punch-header">
+          <h3>👊 Valentin schlagen</h3>
+          <p id="kmPunchRemaining" class="sq-punch-remaining"></p>
+        </div>
+        <canvas id="kmBagCanvas" class="punching-bag-canvas"></canvas>
+        <button class="sq-punch-back-btn" id="kmPunchBack">← Zurück zum Ergebnis</button>
       </div>
 
       <div class="sq-hs-section">
-        <h3>🏆 Highscores – Runde 2</h3>
+        <h3>🏆 Highscores</h3>
         <div id="kmHsList"></div>
       </div>
     </div>

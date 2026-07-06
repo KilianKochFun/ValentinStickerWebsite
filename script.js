@@ -112,7 +112,7 @@ locations.forEach((loc, index) => {
   </div>
 `;
   const dist = calculateDistance(loc.position, AACHEN_CENTER);
-  const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+  const distText = `${dist.toFixed(2)} km`;
   popupDiv.innerHTML += `
   <p style="text-align: left; font-size: 0.9em; color: #555;">
     Entfernung zur Aachener Mitte: <strong>${distText}</strong>
@@ -342,7 +342,7 @@ function openFullscreen(loc) {
 
   const modalMeta = document.getElementById("modalMeta");
   const dist = calculateDistance(loc.position, AACHEN_CENTER);
-  const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+  const distText = `${dist.toFixed(2)} km`;
 
   modalMeta.innerHTML = `Gefunden von <strong>${loc.finder}</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}<br>
   Entfernung zur Aachener Mitte: <strong>${distText}</strong>`;
@@ -505,22 +505,20 @@ locations.forEach((loc) => {
     : 1;
 });
 
-// Calculate distance between two coordinates (Haversine formula)
+// Calculate distance between two coordinates (Haversine).
+// WICHTIG: bit-identisch zu haversineKm() in sticker-view.js (gleicher Erdradius
+// 6371 und gleiche atan2-Formel), damit die auf der Seite angezeigte Entfernung
+// exakt dem Wert entspricht, den das km-Quiz prüft.
 function calculateDistance(coord1, coord2) {
   const [lat1, lon1] = coord1;
   const [lat2, lon2] = coord2;
-  const R = 6371.071;
-  const rad = Math.PI / 180;
-  const dLat = (lat2 - lat1) * rad;
-  const dLon = (lon2 - lon1) * rad;
-  const lat1Rad = lat1 * rad;
-  const lat2Rad = lat2 * rad;
-
-  const a = Math.sin(dLat / 2) ** 2 +
-            Math.cos(lat1Rad) * Math.cos(lat2Rad) *
-            Math.sin(dLon / 2) ** 2;
-  const c = 2 * Math.asin(Math.sqrt(a));
-  return R * c;
+  const R = 6371;
+  const dL = (lat2 - lat1) * Math.PI / 180;
+  const dN = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dL / 2) ** 2 +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dN / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // 3) Render the leaderboard
@@ -614,7 +612,7 @@ function renderDistanceLeaderboardPage() {
     const rank = i + 1; // globaler Platz über alle Seiten hinweg
     const li = document.createElement("li");
     const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}.`;
-    const distText = dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(2)} km`;
+    const distText = `${dist.toFixed(2)} km`;
     li.innerHTML = `
       <span class="medal">${medal}</span>
       <span class="leaderboard-author">${loc.title} (von ${loc.finder || "Unknown"})</span>

@@ -30,9 +30,7 @@ export function fmtDate(iso) {
 
 export function fmtDistanceKm(km) {
   if (!Number.isFinite(km)) return "?";
-  if (km < 10) return km.toFixed(2) + " km";
-  if (km < 100) return km.toFixed(1) + " km";
-  return Math.round(km) + " km";
+  return km.toFixed(2) + " km";
 }
 
 export function haversineKm(lat1, lon1, lat2, lon2) {
