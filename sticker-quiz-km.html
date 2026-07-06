@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>km-Quiz – Valentinsticker</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="page-sticky-footer">
+    <header class="banner">
+      <div class="banner-content">
+        <a href="index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
+        <h1>📏 km-Quiz</h1>
+        <nav class="button-nav">
+          <button onclick="window.location.href='quiz'">🎯 Andere Quizze</button>
+          <button onclick="window.location.href='index'">🏠 Karte</button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="gq-wrapper">
+      <p style="color:#555;margin:0 0 12px;text-align:center;">
+        Wie weit (Luftlinie) ist der Sticker von der <strong>Aachener Mitte</strong> entfernt?
+        Gib die Kilometer ein – je näher, desto mehr Punkte (max. 100 pro Sticker).
+      </p>
+
+      <div class="sq-points-bar">
+        <span class="sq-points-label">Punkte:</span>
+        <strong id="kmScore" style="color:var(--color-primary);font-size:1.4rem;">0</strong>
+        <span class="sq-hs-badge" style="margin-left:auto;">Mein Bestwert: <strong id="kmMyBest">0</strong></span>
+      </div>
+
+      <div id="kmPlay">
+        <p id="kmRound" class="km-round">Sticker 1 / 5</p>
+        <img id="kmImage" class="km-image" alt="" />
+        <h2 id="kmTitle" class="km-title"></h2>
+        <p id="kmFinder" class="km-finder"></p>
+        <div class="km-input-row">
+          <input type="number" id="kmInput" min="0" step="any" inputmode="decimal"
+                 placeholder="km zur Aachener Mitte" />
+          <button id="kmSubmit" class="km-submit">Tippen</button>
+        </div>
+        <div class="sq-toast" id="kmFeedback"></div>
+        <button class="sq-next-btn hidden" id="kmNext">Weiter →</button>
+      </div>
+
+      <div class="sq-gameover" id="kmGameover">
+        <div class="sq-gameover-emoji">📏</div>
+        <h2>Runde vorbei!</h2>
+        <div class="sq-result-row">
+          <div class="sq-result-box hl">
+            <div class="sq-result-val" id="kmGoScore">0</div>
+            <div class="sq-result-lbl">Punkte</div>
+          </div>
+          <div class="sq-result-box">
+            <div class="sq-result-val" id="kmGoBest">0</div>
+            <div class="sq-result-lbl">Mein Bestwert</div>
+          </div>
+        </div>
+        <p id="kmGoStatus" class="sq-save-status" hidden></p>
+        <button class="sq-restart-btn" id="kmRestart">Nochmal spielen 🔄</button>
+      </div>
+
+      <div class="sq-hs-section">
+        <h3>🏆 Highscores – Runde 2</h3>
+        <div id="kmHsList"></div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <a href="impressum">Impressum</a> |
+      <a href="datenschutz">Datenschutz</a> |
+      <a href="quiz">Alle Quizze</a>
+    </footer>
+
+    <script src="assets/js/config-global.js"></script>
+    <script type="module" src="./assets/js/km-quiz.js"></script>
+  </body>
+</html>

@@ -1,6 +1,11 @@
 // Quiz-Helpers: speichert Runs, liest Highscores und Nutzer-Statistiken.
 import { supabase } from "./supabase-client.js";
 
+// Aktuelle Quiz-Runde ("Season"). Runde 1 ist archiviert (siehe unten).
+export const CURRENT_ROUND = 2;
+// Info zur abgeschlossenen Vor-Runde (für die Archiv-Anzeige im Hub).
+export const PREVIOUS_ROUND = { round: 1, endedOn: "2026-07-06" };
+
 // Einreichen nur für eingeloggte Nutzer. Gäste bekommen { saved: false }.
 export async function submitQuizRun(quizType, score) {
   if (!Number.isInteger(score) || score < 0) return { saved: false, reason: "invalid" };
@@ -8,7 +13,7 @@ export async function submitQuizRun(quizType, score) {
   const user = userRes.user;
   if (!user) return { saved: false, reason: "guest" };
   const { error } = await supabase.from("quiz_runs").insert({
-    user_id: user.id, quiz_type: quizType, score,
+    user_id: user.id, quiz_type: quizType, score, round: CURRENT_ROUND,
   });
   if (error) return { saved: false, reason: error.message };
   return { saved: true };
@@ -17,11 +22,12 @@ export async function submitQuizRun(quizType, score) {
 // Top N Nutzer für einen Quiz-Typ nach persönlicher Bestleistung.
 // Wir holen die besten ~200 Runs und reduzieren clientseitig auf max per user_id.
 // Bei steigendem Volumen würde eine DB-View mit DISTINCT ON Sinn ergeben.
-export async function fetchTopScores(quizType, limit = 10) {
+export async function fetchTopScores(quizType, limit = 10, round = CURRENT_ROUND) {
   const { data } = await supabase
     .from("quiz_runs")
     .select("user_id, score, played_at, profiles:user_id(display_name)")
     .eq("quiz_type", quizType)
+    .eq("round", round)
     .order("score", { ascending: false })
     .limit(200);
   if (!data) return [];
@@ -41,12 +47,13 @@ export async function fetchTopScores(quizType, limit = 10) {
     }));
 }
 
-export async function fetchUserBest(userId, quizType) {
+export async function fetchUserBest(userId, quizType, round = CURRENT_ROUND) {
   const { data } = await supabase
     .from("quiz_runs")
     .select("score, played_at")
     .eq("user_id", userId)
     .eq("quiz_type", quizType)
+    .eq("round", round)
     .order("score", { ascending: false })
     .limit(1)
     .maybeSingle();

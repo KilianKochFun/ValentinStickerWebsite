@@ -1903,6 +1903,78 @@ body {
 .sq-toast.ok  { background: #e8f5e9; color: #2e7d32; }
 .sq-toast.bad { background: #ffebee; color: #c62828; }
 
+/* km-Quiz */
+.km-round {
+  text-align: center;
+  color: #555;
+  font-weight: bold;
+  margin: 0 0 10px;
+}
+.km-image {
+  display: block;
+  max-width: 100%;
+  max-height: 45vh;
+  margin: 0 auto;
+  border-radius: 10px;
+  border: 3px solid var(--color-primary);
+  object-fit: contain;
+  background: #fff;
+}
+.km-title {
+  text-align: center;
+  margin: 10px 0 2px;
+  font-size: 1.2rem;
+  color: #333;
+}
+.km-finder {
+  text-align: center;
+  color: #888;
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+.km-input-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.km-input-row input {
+  flex: 1 1 220px;
+  max-width: 320px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--color-primary);
+  font-size: 1.05rem;
+}
+.km-submit {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: bold;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.km-submit:hover { background: #3d8b40; }
+.km-submit.hidden { display: none; }
+
+/* Quiz-Runden-Archiv (aufklappbar) */
+.quiz-archive {
+  margin-top: 20px;
+  border-top: 1px solid var(--color-light-gray);
+  padding-top: 10px;
+}
+.quiz-archive > summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: #666;
+  padding: 6px 0;
+}
+.quiz-archive[open] > summary {
+  margin-bottom: 8px;
+}
+
 .sq-next-btn {
   display: block;
   width: 100%;

@@ -31,6 +31,11 @@
           <p>Welcher von zwei Stickern wurde weiter von Aachen gefunden? Bis zum ersten Fehler.</p>
           <div class="quiz-tile-top" id="topLocation">Top-Score: <strong>–</strong></div>
         </a>
+        <a class="quiz-tile" href="sticker-quiz-km">
+          <h3>📏 km-Schätzen</h3>
+          <p>Wie viele km ist der Sticker von der Aachener Mitte entfernt? 5 Sticker, je näher desto mehr Punkte.</p>
+          <div class="quiz-tile-top" id="topKm">Top-Score: <strong>–</strong></div>
+        </a>
         <a class="quiz-tile" href="sticker-quiz-description">
           <h3>📝 Beschreibung → Sticker</h3>
           <p>Du bekommst eine Beschreibung. Welcher von drei Stickern passt dazu?</p>
@@ -43,10 +48,14 @@
         </a>
       </div>
 
-      <h2>🏆 Highscores</h2>
+      <h2>🏆 Highscores <span style="font-size:0.9rem;color:#888;font-weight:normal;">– Runde 2</span></h2>
       <div class="quiz-hub-hs">
         <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Entfernung</h3>
         <div id="hsLocation"></div>
+      </div>
+      <div class="quiz-hub-hs">
+        <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">km-Schätzen</h3>
+        <div id="hsKm"></div>
       </div>
       <div class="quiz-hub-hs">
         <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Beschreibung → Sticker</h3>
@@ -56,6 +65,22 @@
         <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Titel → Sticker</h3>
         <div id="hsTitle"></div>
       </div>
+
+      <details class="quiz-archive">
+        <summary>📦 Runde 1 (Archiv – beendet am 06.07.2026)</summary>
+        <div class="quiz-hub-hs">
+          <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Entfernung</h3>
+          <div id="arLocation"></div>
+        </div>
+        <div class="quiz-hub-hs">
+          <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Beschreibung → Sticker</h3>
+          <div id="arDescription"></div>
+        </div>
+        <div class="quiz-hub-hs">
+          <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Titel → Sticker</h3>
+          <div id="arTitle"></div>
+        </div>
+      </details>
     </main>
 
     <footer class="footer">
@@ -66,7 +91,7 @@
 
     <script src="assets/js/config-global.js"></script>
     <script type="module">
-      import { fetchTopScores } from "./assets/js/quiz.js";
+      import { fetchTopScores, PREVIOUS_ROUND } from "./assets/js/quiz.js";
       import { escapeHtml } from "./assets/js/sticker-view.js";
 
       const medals = ['🥇','🥈','🥉'];
@@ -97,17 +122,31 @@
         el.innerHTML = `Top-Score: <strong>${top.score}</strong> – ${escapeHtml(top.display_name)}`;
       }
 
-      const [loc, desc, tit] = await Promise.all([
+      const [loc, km, desc, tit] = await Promise.all([
         fetchTopScores('location', 10),
+        fetchTopScores('distance_km', 10),
         fetchTopScores('description', 10),
         fetchTopScores('title', 10),
       ]);
       renderList('hsLocation', loc);
+      renderList('hsKm', km);
       renderList('hsDescription', desc);
       renderList('hsTitle', tit);
       renderTile('topLocation', loc);
+      renderTile('topKm', km);
       renderTile('topDescription', desc);
       renderTile('topTitle', tit);
+
+      // Archiv (Runde 1) – die km-Variante gab es damals noch nicht.
+      const r1 = PREVIOUS_ROUND.round;
+      const [aLoc, aDesc, aTit] = await Promise.all([
+        fetchTopScores('location', 10, r1),
+        fetchTopScores('description', 10, r1),
+        fetchTopScores('title', 10, r1),
+      ]);
+      renderList('arLocation', aLoc);
+      renderList('arDescription', aDesc);
+      renderList('arTitle', aTit);
     </script>
   </body>
 </html>
