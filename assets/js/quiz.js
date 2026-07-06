@@ -1,19 +1,40 @@
 // Quiz-Helpers: speichert Runs, liest Highscores und Nutzer-Statistiken.
 import { supabase } from "./supabase-client.js";
 
-// Aktuelle Quiz-Runde ("Season"). Runde 1 ist archiviert (siehe unten).
-export const CURRENT_ROUND = 2;
-// Info zur abgeschlossenen Vor-Runde (für die Archiv-Anzeige im Hub).
-export const PREVIOUS_ROUND = { round: 1, endedOn: "2026-07-06" };
+// Die aktive Quiz-Runde liegt in der DB (Tabelle quiz_rounds). Hier gecacht,
+// damit nicht jede Anzeige neu nachfragt.
+let _currentRound = null;
+export async function getCurrentRound() {
+  if (_currentRound != null) return _currentRound;
+  const { data } = await supabase
+    .from("quiz_rounds")
+    .select("round")
+    .is("ended_at", null)
+    .order("round", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  _currentRound = data?.round ?? 1;
+  return _currentRound;
+}
 
-// Einreichen nur für eingeloggte Nutzer. Gäste bekommen { saved: false }.
+// Alle Runden für die Archiv-Anzeige (neueste zuerst).
+export async function fetchRounds() {
+  const { data } = await supabase
+    .from("quiz_rounds")
+    .select("round, started_at, ended_at")
+    .order("round", { ascending: false });
+  return data ?? [];
+}
+
+// Einreichen nur für eingeloggte Nutzer. Die Runde stempelt die DB serverseitig
+// (Trigger), daher wird hier bewusst kein round mitgeschickt.
 export async function submitQuizRun(quizType, score) {
   if (!Number.isInteger(score) || score < 0) return { saved: false, reason: "invalid" };
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes.user;
   if (!user) return { saved: false, reason: "guest" };
   const { error } = await supabase.from("quiz_runs").insert({
-    user_id: user.id, quiz_type: quizType, score, round: CURRENT_ROUND,
+    user_id: user.id, quiz_type: quizType, score,
   });
   if (error) return { saved: false, reason: error.message };
   return { saved: true };
@@ -22,12 +43,13 @@ export async function submitQuizRun(quizType, score) {
 // Top N Nutzer für einen Quiz-Typ nach persönlicher Bestleistung.
 // Wir holen die besten ~200 Runs und reduzieren clientseitig auf max per user_id.
 // Bei steigendem Volumen würde eine DB-View mit DISTINCT ON Sinn ergeben.
-export async function fetchTopScores(quizType, limit = 10, round = CURRENT_ROUND) {
+export async function fetchTopScores(quizType, limit = 10, round = null) {
+  const r = round ?? await getCurrentRound();
   const { data } = await supabase
     .from("quiz_runs")
     .select("user_id, score, played_at, profiles:user_id(display_name)")
     .eq("quiz_type", quizType)
-    .eq("round", round)
+    .eq("round", r)
     .order("score", { ascending: false })
     .limit(200);
   if (!data) return [];
@@ -47,13 +69,14 @@ export async function fetchTopScores(quizType, limit = 10, round = CURRENT_ROUND
     }));
 }
 
-export async function fetchUserBest(userId, quizType, round = CURRENT_ROUND) {
+export async function fetchUserBest(userId, quizType, round = null) {
+  const r = round ?? await getCurrentRound();
   const { data } = await supabase
     .from("quiz_runs")
     .select("score, played_at")
     .eq("user_id", userId)
     .eq("quiz_type", quizType)
-    .eq("round", round)
+    .eq("round", r)
     .order("score", { ascending: false })
     .limit(1)
     .maybeSingle();

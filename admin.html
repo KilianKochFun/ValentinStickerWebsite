@@ -76,6 +76,18 @@
       </section>
 
       <section class="admin-section">
+        <h2>Quiz-Runden</h2>
+        <p class="auth-hint">
+          Aktuelle Runde: <strong id="currentRoundDisplay">…</strong>.
+          „Neue Runde starten" schließt die laufende Runde (sie wandert ins Archiv)
+          und beginnt eine frische Runde – die Highscores starten dann bei null.
+        </p>
+        <button type="button" id="newRoundBtn" class="secondary-btn">🔄 Neue Runde starten</button>
+        <p id="roundOk" class="auth-ok" hidden></p>
+        <p id="roundError" class="auth-error" hidden></p>
+      </section>
+
+      <section class="admin-section">
         <h2>Legacy-Finder einem User zuordnen</h2>
         <form id="mergeForm" class="auth-form">
           <label>
@@ -294,11 +306,42 @@
         renderAdminStickersPage();
       }
 
+      // ---------- Quiz-Runden ----------
+      async function refreshCurrentRound() {
+        const { data } = await supabase
+          .from("quiz_rounds")
+          .select("round")
+          .is("ended_at", null)
+          .order("round", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        document.getElementById("currentRoundDisplay").textContent = data?.round ?? "–";
+      }
+
+      function initQuizRounds() {
+        refreshCurrentRound();
+        const btn = document.getElementById("newRoundBtn");
+        const ok = document.getElementById("roundOk");
+        const err = document.getElementById("roundError");
+        btn.addEventListener("click", async () => {
+          ok.hidden = true; err.hidden = true;
+          if (!confirm("Neue Quiz-Runde starten? Die laufende Runde wird archiviert, die Highscores starten dann bei null.")) return;
+          btn.disabled = true;
+          const { data, error } = await supabase.rpc("start_new_quiz_round");
+          btn.disabled = false;
+          if (error) { err.textContent = error.message; err.hidden = false; return; }
+          ok.textContent = `Runde ${data} gestartet. 🎉`;
+          ok.hidden = false;
+          refreshCurrentRound();
+        });
+      }
+
       function initAdmin() {
         refreshOpenCodes();
         refreshLegacyMergeForm();
         refreshUserSelect();
         initStickerManagement();
+        initQuizRounds();
 
         const userActionForm = document.getElementById("userActionForm");
         const resetBtn = document.getElementById("resetPwBtn");

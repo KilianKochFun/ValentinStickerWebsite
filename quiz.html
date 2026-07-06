@@ -48,7 +48,7 @@
         </a>
       </div>
 
-      <h2>🏆 Highscores <span style="font-size:0.9rem;color:#888;font-weight:normal;">– Runde 2</span></h2>
+      <h2>🏆 Highscores <span id="currentRoundLabel" style="font-size:0.9rem;color:#888;font-weight:normal;">– Runde …</span></h2>
       <div class="quiz-hub-hs">
         <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Entfernung</h3>
         <div id="hsLocation"></div>
@@ -66,21 +66,8 @@
         <div id="hsTitle"></div>
       </div>
 
-      <details class="quiz-archive">
-        <summary>📦 Runde 1 (Archiv – beendet am 06.07.2026)</summary>
-        <div class="quiz-hub-hs">
-          <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Entfernung</h3>
-          <div id="arLocation"></div>
-        </div>
-        <div class="quiz-hub-hs">
-          <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Beschreibung → Sticker</h3>
-          <div id="arDescription"></div>
-        </div>
-        <div class="quiz-hub-hs">
-          <h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">Titel → Sticker</h3>
-          <div id="arTitle"></div>
-        </div>
-      </details>
+      <h2 style="margin-top:24px;">📦 Archiv</h2>
+      <div id="quizArchive"></div>
     </main>
 
     <footer class="footer">
@@ -91,62 +78,61 @@
 
     <script src="assets/js/config-global.js"></script>
     <script type="module">
-      import { fetchTopScores, PREVIOUS_ROUND } from "./assets/js/quiz.js";
+      import { fetchTopScores, fetchRounds, getCurrentRound } from "./assets/js/quiz.js";
       import { escapeHtml } from "./assets/js/sticker-view.js";
 
+      const QUIZZES = [
+        { type: 'location',    label: 'Entfernung',             hs: 'hsLocation',    tile: 'topLocation' },
+        { type: 'distance_km', label: 'km-Schätzen',            hs: 'hsKm',          tile: 'topKm' },
+        { type: 'description', label: 'Beschreibung → Sticker', hs: 'hsDescription', tile: 'topDescription' },
+        { type: 'title',       label: 'Titel → Sticker',        hs: 'hsTitle',       tile: 'topTitle' },
+      ];
       const medals = ['🥇','🥈','🥉'];
-      function renderList(containerId, scores) {
-        const el = document.getElementById(containerId);
-        if (!scores.length) {
-          el.innerHTML = '<div class="sq-hs-empty">Noch keine Einträge.</div>';
-          return;
-        }
-        el.innerHTML = scores.map((s, i) => {
+
+      function listHtml(scores) {
+        if (!scores.length) return '<div class="sq-hs-empty">Noch keine Einträge.</div>';
+        return scores.map((s, i) => {
           const date = new Date(s.played_at).toLocaleDateString('de-DE');
-          return `
-            <div class="sq-hs-entry">
-              <span class="sq-hs-rank">${medals[i] || (i+1)+'.'}</span>
-              <a class="sq-hs-name" href="profile?id=${encodeURIComponent(s.user_id)}">${escapeHtml(s.display_name)}</a>
-              <span class="sq-hs-val" style="margin-left:auto;">${s.score}</span>
-              <span class="sq-hs-date">${date}</span>
-            </div>
-          `;
+          return `<div class="sq-hs-entry">
+            <span class="sq-hs-rank">${medals[i] || (i+1)+'.'}</span>
+            <a class="sq-hs-name" href="profile?id=${encodeURIComponent(s.user_id)}">${escapeHtml(s.display_name)}</a>
+            <span class="sq-hs-val" style="margin-left:auto;">${s.score}</span>
+            <span class="sq-hs-date">${date}</span>
+          </div>`;
         }).join('');
       }
-
-      function renderTile(tileId, scores) {
-        const el = document.getElementById(tileId);
-        if (!el) return;
-        if (!scores.length) { el.innerHTML = 'Top-Score: <strong>noch keiner</strong>'; return; }
-        const top = scores[0];
-        el.innerHTML = `Top-Score: <strong>${top.score}</strong> – ${escapeHtml(top.display_name)}`;
+      function tileHtml(scores) {
+        if (!scores.length) return 'Top-Score: <strong>noch keiner</strong>';
+        return `Top-Score: <strong>${scores[0].score}</strong> – ${escapeHtml(scores[0].display_name)}`;
       }
+      function setHtml(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
 
-      const [loc, km, desc, tit] = await Promise.all([
-        fetchTopScores('location', 10),
-        fetchTopScores('distance_km', 10),
-        fetchTopScores('description', 10),
-        fetchTopScores('title', 10),
-      ]);
-      renderList('hsLocation', loc);
-      renderList('hsKm', km);
-      renderList('hsDescription', desc);
-      renderList('hsTitle', tit);
-      renderTile('topLocation', loc);
-      renderTile('topKm', km);
-      renderTile('topDescription', desc);
-      renderTile('topTitle', tit);
+      const current = await getCurrentRound();
+      const lbl = document.getElementById('currentRoundLabel');
+      if (lbl) lbl.textContent = `– Runde ${current}`;
 
-      // Archiv (Runde 1) – die km-Variante gab es damals noch nicht.
-      const r1 = PREVIOUS_ROUND.round;
-      const [aLoc, aDesc, aTit] = await Promise.all([
-        fetchTopScores('location', 10, r1),
-        fetchTopScores('description', 10, r1),
-        fetchTopScores('title', 10, r1),
-      ]);
-      renderList('arLocation', aLoc);
-      renderList('arDescription', aDesc);
-      renderList('arTitle', aTit);
+      // Aktuelle Runde: Highscores + Kacheln
+      await Promise.all(QUIZZES.map(async (q) => {
+        const scores = await fetchTopScores(q.type, 10, current);
+        setHtml(q.hs, listHtml(scores));
+        setHtml(q.tile, tileHtml(scores));
+      }));
+
+      // Archiv: alle beendeten Runden, pro Quiz nur wenn Einträge vorhanden.
+      const rounds = await fetchRounds();
+      const past = rounds.filter((r) => r.ended_at != null && r.round !== current);
+      const archiveEl = document.getElementById('quizArchive');
+      const parts = [];
+      for (const r of past) {
+        const lists = await Promise.all(QUIZZES.map((q) => fetchTopScores(q.type, 10, r.round)));
+        const blocks = QUIZZES.map((q, i) => lists[i].length
+          ? `<div class="quiz-hub-hs"><h3 style="margin:0 0 8px;color:#555;font-size:0.9rem;">${q.label}</h3>${listHtml(lists[i])}</div>`
+          : '').join('');
+        if (!blocks) continue;
+        const ended = new Date(r.ended_at).toLocaleDateString('de-DE');
+        parts.push(`<details class="quiz-archive"><summary>Runde ${r.round} · beendet am ${ended}</summary>${blocks}</details>`);
+      }
+      archiveEl.innerHTML = parts.length ? parts.join('') : '<p style="color:#888;">Noch keine abgeschlossenen Runden.</p>';
     </script>
   </body>
 </html>
