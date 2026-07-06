@@ -1,30 +1,22 @@
-// km-Quiz: Für 5 zufällige Sticker die Luftlinie zur Aachener Mitte in km schätzen.
-// Punkte pro Sticker je näher an der echten Entfernung (max. 100), Summe = Score.
+// km-Quiz (Sudden Death, endlos): Für jeden Sticker die EXAKTE Luftlinie zur
+// Aachener Mitte in km auf 2 Nachkommastellen eintippen. Genau richtig → weiter,
+// Score +1. Ein Fehler → Runde vorbei. Score = richtige Tipps in Folge.
 import { supabase, imageUrlFor } from "./supabase-client.js";
 import { submitQuizRun, fetchTopScores, fetchUserBest } from "./quiz.js";
-import { escapeHtml, haversineKm, fmtDistanceKm, isVideoPath } from "./sticker-view.js";
+import { escapeHtml, haversineKm, isVideoPath } from "./sticker-view.js";
 
 const AACHEN = [50.7763, 6.0836];
-const ROUNDS = 5;
+const DECIMALS = 2;
 
 const el = (id) => document.getElementById(id);
 let pool = [];
-let picks = [];
-let idx = 0;
+let current = null;
+let lastId = null;
 let score = 0;
-let answered = false;
+let over = false;
 
 function finderName(s) {
   return s.profiles?.display_name || s.legacy_finder_name || "Anonym";
-}
-
-function shuffle(a) {
-  const arr = a.slice();
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
 }
 
 async function loadPool() {
@@ -37,19 +29,22 @@ async function loadPool() {
   );
 }
 
-function scoreGuess(guess, actual) {
-  const err = Math.abs(guess - actual);
-  const rel = err / Math.max(actual, 5); // kleine Distanzen etwas gnädiger
-  return Math.max(0, Math.round(100 * (1 - rel)));
+function pickSticker() {
+  let s = pool[Math.floor(Math.random() * pool.length)];
+  let guard = 0;
+  while (pool.length > 1 && s.id === lastId && guard++ < 10) {
+    s = pool[Math.floor(Math.random() * pool.length)];
+  }
+  lastId = s.id;
+  return s;
 }
 
-function showRound() {
-  answered = false;
-  const s = picks[idx];
-  el("kmRound").textContent = `Sticker ${idx + 1} / ${picks.length}`;
-  el("kmImage").src = imageUrlFor({ image_path: s.image_path });
-  el("kmTitle").textContent = s.title || "(ohne Titel)";
-  el("kmFinder").textContent = "gefunden von " + finderName(s);
+function showSticker() {
+  over = false;
+  current = pickSticker();
+  el("kmImage").src = imageUrlFor({ image_path: current.image_path });
+  el("kmTitle").textContent = current.title || "(ohne Titel)";
+  el("kmFinder").textContent = "gefunden von " + finderName(current);
   const input = el("kmInput");
   input.value = "";
   input.disabled = false;
@@ -62,39 +57,40 @@ function showRound() {
 }
 
 function submitGuess() {
-  if (answered) return;
-  const guess = parseFloat(el("kmInput").value);
+  if (over || el("kmInput").disabled) return;
+  const raw = el("kmInput").value.trim().replace(",", ".");
+  const guess = parseFloat(raw);
   if (!Number.isFinite(guess) || guess < 0) { el("kmInput").focus(); return; }
-  answered = true;
-  const s = picks[idx];
-  const actual = haversineKm(AACHEN[0], AACHEN[1], s.latitude, s.longitude);
-  const pts = scoreGuess(guess, actual);
-  score += pts;
-  el("kmScore").textContent = String(score);
+  const actual = haversineKm(AACHEN[0], AACHEN[1], current.latitude, current.longitude);
+  const correct = guess.toFixed(DECIMALS) === actual.toFixed(DECIMALS);
   el("kmInput").disabled = true;
   el("kmSubmit").classList.add("hidden");
-  const fb = el("kmFeedback");
-  fb.innerHTML = `Echt: <strong>${fmtDistanceKm(actual)}</strong> · dein Tipp: ${fmtDistanceKm(guess)} → <strong>+${pts}</strong> Punkte`;
-  fb.className = "sq-toast show " + (pts >= 50 ? "ok" : "bad");
-  const next = el("kmNext");
-  next.classList.remove("hidden");
-  next.textContent = idx + 1 >= picks.length ? "Ergebnis →" : "Weiter →";
-  next.focus();
+  if (correct) {
+    score++;
+    el("kmScore").textContent = String(score);
+    const fb = el("kmFeedback");
+    fb.innerHTML = `✅ Genau richtig: <strong>${actual.toFixed(DECIMALS)} km</strong>!`;
+    fb.className = "sq-toast show ok";
+    const next = el("kmNext");
+    next.classList.remove("hidden");
+    next.textContent = "Nächster Sticker →";
+    next.focus();
+  } else {
+    gameOver(actual, guess);
+  }
 }
 
 function next() {
-  idx++;
-  if (idx >= picks.length) { gameOver(); return; }
-  showRound();
+  if (!over) showSticker();
 }
 
 function startGame() {
-  picks = shuffle(pool).slice(0, ROUNDS);
-  idx = 0; score = 0; answered = false;
+  score = 0;
+  over = false;
   el("kmScore").textContent = "0";
   el("kmGameover").classList.remove("visible");
   el("kmPlay").style.display = "";
-  showRound();
+  showSticker();
 }
 
 async function refreshMine() {
@@ -110,7 +106,7 @@ async function refreshHs() {
   const medals = ["🥇", "🥈", "🥉"];
   const box = el("kmHsList");
   if (!scores.length) {
-    box.innerHTML = '<div class="sq-hs-empty">Noch keine Einträge in Runde 2.</div>';
+    box.innerHTML = '<div class="sq-hs-empty">Noch keine Einträge in dieser Runde.</div>';
     return;
   }
   box.innerHTML = scores.map((s, i) => {
@@ -124,20 +120,28 @@ async function refreshHs() {
   }).join("");
 }
 
-async function gameOver() {
+async function gameOver(actual, guess) {
+  over = true;
   el("kmPlay").style.display = "none";
   el("kmGameover").classList.add("visible");
   el("kmGoScore").textContent = String(score);
+  el("kmGoReveal").innerHTML =
+    `Dein Tipp: <strong>${guess.toFixed(DECIMALS)} km</strong> · richtig war: <strong>${actual.toFixed(DECIMALS)} km</strong>`;
   const status = el("kmGoStatus");
   status.hidden = true;
-  const res = await submitQuizRun("distance_km", score);
-  if (res.saved) {
-    status.textContent = "Im Highscore gespeichert ✔";
-    status.hidden = false;
-    await refreshMine();
-    await refreshHs();
-  } else if (res.reason === "guest") {
-    status.innerHTML = 'Nicht gespeichert – <a href="login">einloggen</a> für den Highscore.';
+  if (score > 0) {
+    const res = await submitQuizRun("distance_km", score);
+    if (res.saved) {
+      status.textContent = "Im Highscore gespeichert ✔";
+      status.hidden = false;
+      await refreshMine();
+      await refreshHs();
+    } else if (res.reason === "guest") {
+      status.innerHTML = 'Nicht gespeichert – <a href="login">einloggen</a> für den Highscore.';
+      status.hidden = false;
+    }
+  } else {
+    status.textContent = "0 Treffer – schaff mindestens einen für den Highscore. 😉";
     status.hidden = false;
   }
   el("kmGoBest").textContent = el("kmMyBest").textContent;
@@ -150,16 +154,16 @@ el("kmRestart").addEventListener("click", startGame);
 el("kmInput").addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   e.preventDefault();
-  if (answered) next(); else submitGuess();
+  if (el("kmInput").disabled) next(); else submitGuess();
 });
 
 // ── Init ──────────────────────────────────────────────────
 await loadPool();
 await refreshMine();
 await refreshHs();
-if (pool.length < ROUNDS) {
+if (pool.length < 1) {
   el("kmPlay").innerHTML =
-    `<p style="text-align:center;color:#555;">Noch nicht genug Sticker mit Koordinaten für dieses Quiz (mind. ${ROUNDS} nötig).</p>`;
+    '<p style="text-align:center;color:#555;">Noch keine Sticker mit Koordinaten für dieses Quiz.</p>';
 } else {
   startGame();
 }
