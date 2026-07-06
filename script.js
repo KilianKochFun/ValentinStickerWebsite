@@ -66,6 +66,8 @@ const modalVideo = document.getElementById("modalVideo");
 const modalTitle = document.getElementById("modalTitle");
 const modalDescription = document.getElementById("modalDescription");
 const shareStickerBtn = document.getElementById("shareStickerBtn");
+const zoomStickerBtn = document.getElementById("zoomStickerBtn");
+const commentsJumpBtn = document.getElementById("commentsJumpBtn");
 const zoomOverlay = document.getElementById("zoomOverlay");
 const zoomImage = document.getElementById("zoomImage");
 
@@ -312,6 +314,8 @@ function openFullscreen(loc) {
     modalImage.src = loc.image;
     modalImage.alt = loc.title;
   }
+  // "Vergrößern" nur für Bilder (Videos haben eigene Controls).
+  if (zoomStickerBtn) zoomStickerBtn.hidden = loc.isVideo;
   modalTitle.textContent = loc.title;
   modalDescription.textContent = loc.description;
 
@@ -332,16 +336,28 @@ function openFullscreen(loc) {
 // Schließen per Button
 closeModal.onclick = closeFullscreen;
 
-// Bild-Zoom: Klick aufs Modal-Bild öffnet die Großansicht, Klick schließt sie.
+// Bild-Zoom: Klick aufs Modal-Bild ODER auf den "Vergrößern"-Button öffnet die
+// Großansicht, Klick auf die Großansicht schließt sie.
+function openZoom() {
+  if (!modalImage.getAttribute("src")) return;
+  zoomImage.src = modalImage.src;
+  zoomOverlay.hidden = false;
+}
 if (modalImage && zoomOverlay && zoomImage) {
-  modalImage.addEventListener("click", () => {
-    if (!modalImage.getAttribute("src")) return;
-    zoomImage.src = modalImage.src;
-    zoomOverlay.hidden = false;
-  });
+  modalImage.addEventListener("click", openZoom);
+  if (zoomStickerBtn) zoomStickerBtn.addEventListener("click", openZoom);
   zoomOverlay.addEventListener("click", () => {
     zoomOverlay.hidden = true;
     zoomImage.removeAttribute("src");
+  });
+}
+
+// "Kommentare"-Button springt zum Kommentarbereich (macht ihn auffindbar,
+// v. a. auf Mobil, wo er unter dem Bild liegt).
+if (commentsJumpBtn) {
+  commentsJumpBtn.addEventListener("click", () => {
+    const c = document.getElementById("modalComments");
+    if (c) c.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
