@@ -118,13 +118,6 @@ locations.forEach((loc, index) => {
     Entfernung zur Aachener Mitte: <strong>${distText}</strong>
   </p>
 `;
-  if (loc.commentCount > 0) {
-    popupDiv.innerHTML += `
-  <p style="text-align: left; font-size: 0.9em; color: #555;">
-    💬 <strong>${loc.commentCount}</strong> Kommentar${loc.commentCount === 1 ? "" : "e"}
-  </p>
-`;
-  }
 
   const fullscreenBtn = document.createElement("button");
   fullscreenBtn.innerHTML = "🖥️ Vollbild anzeigen";
@@ -159,6 +152,23 @@ locations.forEach((loc, index) => {
   };
   popupDiv.appendChild(zoomButton);
 
+  const commentsButton = document.createElement("button");
+  commentsButton.innerHTML = loc.commentCount > 0
+    ? `💬 ${loc.commentCount} Kommentar${loc.commentCount === 1 ? "" : "e"} ansehen`
+    : "💬 Kommentare";
+  commentsButton.style.cssText = `
+      background-color: #4CAF50;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 5px;
+      width: 100%;
+    `;
+  commentsButton.onclick = () => openStickerComments(loc);
+  popupDiv.appendChild(commentsButton);
+
   marker.bindPopup(popupDiv, { autoPan: true, maxWidth: 350 });
   marker.on("popupopen", () => {
     if (loc.isVideo) return; // Video spielt inline über seine Controls
@@ -175,6 +185,17 @@ function focusStickerOnMap(loc) {
   if (loc.marker) loc.marker.openPopup();
   const mapEl = document.getElementById("map");
   if (mapEl) mapEl.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Öffnet das Vollbild des Stickers und springt zum Kommentarbereich.
+// (Wird u. a. vom "Kommentare"-Button im Karten-Popup genutzt.)
+function openStickerComments(loc) {
+  openFullscreen(loc);
+  // Kommentare laden asynchron – kurz warten, dann hinscrollen.
+  setTimeout(() => {
+    const c = document.getElementById("modalComments");
+    if (c) c.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 200);
 }
 
 function buildGalleryCard(index) {
