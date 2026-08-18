@@ -1808,6 +1808,80 @@ body {
   color: #555;
 }
 
+/* ── Länder-Album ──────────────────────────────────────────────────────── */
+/* Startseite: Kachelraster aller Länder, in denen es schon Sticker gibt. */
+.album-summary {
+  margin: 0 0 12px;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.country-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.country-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  background: #fafafa;
+  border: 1px solid #e4e4e4;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.country-flag { font-size: 1.9rem; line-height: 1.1; }
+.country-name { font-weight: bold; font-size: 0.9rem; color: #333; }
+.country-count { font-size: 0.8rem; color: var(--color-primary); font-weight: bold; }
+.country-finders {
+  font-size: 0.75rem;
+  color: #888;
+  overflow-wrap: anywhere;
+}
+
+/* Profil: gesammelte und fehlende Länder als Flaggen-Pillen. */
+.album-section { margin-top: 18px; }
+
+.album-sub {
+  color: #555;
+  font-size: 0.9rem;
+  margin: 14px 0 6px;
+}
+
+.album-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.album-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 4px 12px 4px 8px;
+  font-size: 0.85rem;
+  color: #444;
+}
+
+.album-flag-emoji { font-size: 1.15rem; line-height: 1; }
+
+/* Fehlende Länder ausgegraut – sichtbar, aber klar "noch nicht meins". */
+.album-missing .album-flag {
+  background: #fff;
+  border-style: dashed;
+  color: #999;
+}
+.album-missing .album-flag-emoji { filter: grayscale(1); opacity: 0.65; }
+
+.album-empty { color: #888; font-size: 0.9rem; margin: 0; }
+
 .sticker-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

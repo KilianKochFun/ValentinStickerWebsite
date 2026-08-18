@@ -34,10 +34,19 @@
           <div class="stats-grid">
             <div class="stat-box"><div class="val" id="statStickers">0</div><div class="lbl">Sticker</div></div>
             <div class="stat-box"><div class="val" id="statLegacy">0</div><div class="lbl">davon Legacy</div></div>
+            <div class="stat-box"><div class="val" id="statCountries">0</div><div class="lbl">Länder</div></div>
             <div class="stat-box"><div class="val" id="statContinents">0</div><div class="lbl">Kontinente</div></div>
             <div class="stat-box"><div class="val" id="statMaxDistance">0</div><div class="lbl">Max. Distanz (km)</div></div>
           </div>
           <div class="continent-list" id="continentList"></div>
+        </section>
+
+        <section class="album-section" id="albumSection" hidden>
+          <h2 style="color:var(--color-primary);font-size:1.1rem;margin:0 0 4px;">🌍 Länder-Album</h2>
+          <p class="album-summary" id="albumSummary"></p>
+          <div class="album-flags" id="albumOwned"></div>
+          <h3 class="album-sub" id="albumMissingTitle">Fehlen noch</h3>
+          <div class="album-flags album-missing" id="albumMissing"></div>
         </section>
 
         <section style="margin-top:18px;">
@@ -83,7 +92,7 @@
       import { supabase } from "./assets/js/supabase-client.js";
       import { fetchUserRuns } from "./assets/js/quiz.js";
       import { escapeHtml, fmtDate, fmtDistanceKm, haversineKm, stickerCardHtml } from "./assets/js/sticker-view.js";
-      import { guessContinent } from "./assets/js/upload.js";
+      import { flagEmoji, countryName, continentOf, CONTINENT_NAMES } from "./assets/js/countries.js";
 
       const params = new URLSearchParams(window.location.search);
       const userId = params.get("id");
@@ -107,7 +116,7 @@
         const [{ data: profile }, { data: stickers }, runs] = await Promise.all([
           supabase.from("profiles").select("id, display_name, is_admin, created_at").eq("id", id).maybeSingle(),
           supabase.from("stickers")
-            .select("id, title, description, image_path, latitude, longitude, continent, found_at, is_legacy, is_hidden")
+            .select("id, title, description, image_path, latitude, longitude, country_code, found_at, is_legacy, is_hidden")
             .eq("uploader_id", id)
             .eq("is_hidden", false)
             .order("found_at", { ascending: false }),
@@ -124,17 +133,17 @@
         document.getElementById("statStickers").textContent = rows.length;
         document.getElementById("statLegacy").textContent = rows.filter((s) => s.is_legacy).length;
 
-        // Kontinente neu aus Koordinaten ableiten – gespeicherte continent-Felder
-        // sind für Legacy-Imports teils falsch.
-        const continentSet = new Set(
-          rows
-            .map((s) => guessContinent(s.latitude, s.longitude) ?? s.continent)
-            .filter(Boolean)
-        );
+        // Länder und Kontinente kommen aus `country_code` (einmalig beim Upload
+        // geocodiert). Der Kontinent wird daraus abgeleitet, nicht geraten.
+        const myCountries = new Set(rows.map((s) => s.country_code).filter(Boolean));
+        document.getElementById("statCountries").textContent = myCountries.size;
+
+        const continentSet = new Set([...myCountries].map(continentOf).filter(Boolean));
         document.getElementById("statContinents").textContent = continentSet.size;
-        const continentNames = { EU: "Europa", NA: "Nordamerika", SA: "Südamerika", AS: "Asien", AF: "Afrika", OC: "Ozeanien", AN: "Antarktis" };
         document.getElementById("continentList").innerHTML = [...continentSet]
-          .map((c) => `<span class="continent-pill">${continentNames[c] ?? c}</span>`).join("");
+          .map((c) => `<span class="continent-pill">${CONTINENT_NAMES[c] ?? c}</span>`).join("");
+
+        renderAlbum(myCountries);
 
         // Max Distanz = maximale Haversine-Distanz zwischen zwei eigenen Stickern.
         // O(n²), bei <~1000 Stickern pro Nutzer völlig ok.
@@ -188,6 +197,58 @@
 
         loadingEl.hidden = true;
         bodyEl.hidden = false;
+      }
+
+      // Länder-Album: Maßstab ist die Community, nicht die Weltkarte. Das
+      // "Album" sind alle Länder, in denen irgendwer schon einen Sticker hat –
+      // so bleibt die Fehlliste kurz, erreichbar und wächst von selbst mit.
+      async function renderAlbum(myCountries) {
+        const { data, error } = await supabase
+          .from("stickers")
+          .select("country_code, uploader_id, legacy_finder_name, profiles:uploader_id(display_name)")
+          .eq("is_hidden", false)
+          .not("country_code", "is", null);
+        if (error || !data?.length) return;
+
+        // Pro Land merken, wer dort schon einen Sticker hat.
+        const findersByCountry = new Map();
+        for (const row of data) {
+          const cc = row.country_code;
+          const who = row.profiles?.display_name || row.legacy_finder_name || "Anonym";
+          if (!findersByCountry.has(cc)) findersByCountry.set(cc, new Set());
+          findersByCountry.get(cc).add(who);
+        }
+
+        const all = [...findersByCountry.keys()]
+          .sort((a, b) => countryName(a).localeCompare(countryName(b), "de"));
+        const owned   = all.filter((cc) => myCountries.has(cc));
+        const missing = all.filter((cc) => !myCountries.has(cc));
+
+        document.getElementById("albumSection").hidden = false;
+        document.getElementById("albumSummary").innerHTML =
+          `<strong>${owned.length} von ${all.length}</strong> Ländern im Umlauf gesammelt.`;
+
+        const pill = (cc, extra = "") =>
+          `<span class="album-flag" title="${countryName(cc)}${extra}">` +
+          `<span class="album-flag-emoji">${flagEmoji(cc)}</span>` +
+          `<span class="album-flag-name">${countryName(cc)}</span></span>`;
+
+        document.getElementById("albumOwned").innerHTML =
+          owned.length ? owned.map((cc) => pill(cc)).join("")
+                       : '<p class="album-empty">Noch kein Land im Album.</p>';
+
+        const missingTitle = document.getElementById("albumMissingTitle");
+        const missingBox   = document.getElementById("albumMissing");
+        if (!missing.length) {
+          missingTitle.textContent = "Album komplett – alle Länder der Community gesammelt! 🎉";
+          missingBox.innerHTML = "";
+        } else {
+          missingTitle.textContent = `Fehlen noch (${missing.length})`;
+          missingBox.innerHTML = missing.map((cc) => {
+            const who = [...findersByCountry.get(cc)].join(", ");
+            return pill(cc, ` – hat: ${who}`);
+          }).join("");
+        }
       }
 
       // Lightbox – zeigt Sticker vergrößert inkl. Beschreibung.

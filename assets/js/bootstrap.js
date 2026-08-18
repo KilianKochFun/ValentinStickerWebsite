@@ -40,7 +40,7 @@
     const { data, error } = await sb
       .from("stickers")
       .select(
-        "id, uploader_id, legacy_finder_name, image_path, is_legacy, title, description, latitude, longitude, found_at, profiles:uploader_id(display_name), comments(count), sticker_likes(count)"
+        "id, uploader_id, legacy_finder_name, image_path, is_legacy, title, description, latitude, longitude, country_code, found_at, profiles:uploader_id(display_name), comments(count), sticker_likes(count)"
       )
       .eq("is_hidden", false)
       // Neueste zuerst: die Galerie blättert in dieser Reihenfolge, der zuletzt
@@ -62,6 +62,7 @@
       isVideo: /\.(mp4|webm|mov|m4v|ogg)$/i.test(row.image_path || ""),
       time: row.found_at ? new Date(row.found_at) : new Date(),
       finder: row.profiles?.display_name || row.legacy_finder_name || "Anonym",
+      countryCode: row.country_code || null,
       title: row.title || "",
       description: row.description || "",
       commentCount: row.comments?.[0]?.count ?? 0,
@@ -71,6 +72,12 @@
 
   (async () => {
     try {
+      // Länder-Helfer VOR dem Hauptscript laden. script.js ist ein klassisches
+      // Script und kann nicht selbst importieren – es liest window.VS_COUNTRIES.
+      // Pfad aus der eigenen src ableiten, damit er nicht an der Seitentiefe hängt.
+      await import(new URL("countries.js", scriptEl.src).href).catch((e) =>
+        console.warn("[bootstrap] countries.js nicht geladen:", e)
+      );
       window.locations = await fetchFromSupabase();
       loadMain();
     } catch (e) {

@@ -899,64 +899,94 @@ if (savedCursorEffect) {
   toggleCursorBtn.style.opacity = '0.7';
 }
 
-// KONTINENTE LEADERBOARD
+// LÄNDER-ALBUM + KONTINENTE
+//
+// Beides basiert auf `country_code` aus der DB (einmalig beim Upload
+// geocodiert, siehe scripts/backfill-countries.js). Der Kontinent wird aus dem
+// Ländercode abgeleitet statt aus Koordinaten geraten — die alte Bounding-Box-
+// Heuristik hat z. B. Tunis nach Europa und Tel Aviv nach Afrika sortiert.
+const VSC = window.VS_COUNTRIES;
+
+// Gruppiert die Sticker nach Ländercode: { DE: [loc, loc, …], … }
+function groupByCountry() {
+  const byCountry = {};
+  for (const loc of locations) {
+    if (!loc.countryCode) continue;
+    (byCountry[loc.countryCode] ||= []).push(loc);
+  }
+  return byCountry;
+}
+
+function updateCountryAlbum() {
+  const box  = document.getElementById("countryAlbum");
+  const grid = document.getElementById("countryAlbumGrid");
+  const sum  = document.getElementById("countryAlbumSummary");
+  if (!box || !grid || !VSC) return;
+
+  const byCountry = groupByCountry();
+  const entries = Object.entries(byCountry).sort(
+    (a, b) => b[1].length - a[1].length || VSC.countryName(a[0]).localeCompare(VSC.countryName(b[0]), "de")
+  );
+
+  // Vor dem Backfill hat noch kein Sticker einen Ländercode – dann lieber
+  // nichts zeigen als eine leere Box.
+  if (entries.length === 0) { box.hidden = true; return; }
+  box.hidden = false;
+
+  const continents = new Set(entries.map(([cc]) => VSC.continentOf(cc)).filter(Boolean));
+  sum.textContent = `${entries.length} ${entries.length === 1 ? "Land" : "Länder"} `
+    + `auf ${continents.size} ${continents.size === 1 ? "Kontinent" : "Kontinenten"} `
+    + `– und der Rest der Welt wartet noch.`;
+
+  grid.innerHTML = entries.map(([cc, locs]) => {
+    const finders = [...new Set(locs.map((l) => l.finder))];
+    const who = finders.length > 2
+      ? `${finders.slice(0, 2).join(", ")} +${finders.length - 2}`
+      : finders.join(", ");
+    return `<div class="country-card" title="${VSC.countryName(cc)}">
+        <span class="country-flag">${VSC.flagEmoji(cc)}</span>
+        <span class="country-name">${VSC.countryName(cc)}</span>
+        <span class="country-count">${locs.length} Sticker</span>
+        <span class="country-finders">${who}</span>
+      </div>`;
+  }).join("");
+}
+
 function updateContinentsLeaderboard() {
-  const continentMap = {
-    'Europa': { minLat: 35, maxLat: 71, minLon: -10, maxLon: 40 },
-    'Asien': { minLat: -10, maxLat: 80, minLon: 40, maxLon: 150 },
-    'Afrika': { minLat: -35, maxLat: 37, minLon: -20, maxLon: 55 },
-    'Nordamerika': { minLat: 15, maxLat: 80, minLon: -170, maxLon: -50 },
-    'Südamerika': { minLat: -56, maxLat: 13, minLon: -85, maxLon: -30 },
-    'Australien': { minLat: -47, maxLat: -10, minLon: 113, maxLon: 154 }
-  };
-
-  const continentFindings = {};
-
-  locations.forEach((loc) => {
-    const [lat, lon] = loc.position;
-    for (const [continent, bounds] of Object.entries(continentMap)) {
-      if (lat >= bounds.minLat && lat <= bounds.maxLat &&
-          lon >= bounds.minLon && lon <= bounds.maxLon) {
-        if (!continentFindings[continent]) {
-          continentFindings[continent] = [];
-        }
-        continentFindings[continent].push(loc);
-        break;
-      }
-    }
-  });
-
-  const continentList = document.getElementById('continentsLeaderboardList');
+  const continentList = document.getElementById("continentsLeaderboardList");
   if (!continentList) return;
-  continentList.innerHTML = '';
+  continentList.innerHTML = "";
+  if (!VSC) return;
 
-  // Get sorted continents
-  const sortedContinents = Object.entries(continentFindings)
-    .sort((a, b) => b[1].length - a[1].length);
+  const byContinent = {};
+  for (const loc of locations) {
+    const c = VSC.continentOf(loc.countryCode);
+    if (!c) continue;
+    (byContinent[c] ||= []).push(loc);
+  }
 
-  if (sortedContinents.length === 0) {
-    const li = document.createElement('li');
-    li.textContent = 'Noch keine Sticker gefunden';
+  const sorted = Object.entries(byContinent).sort((a, b) => b[1].length - a[1].length);
+  if (sorted.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "Noch keine Länderdaten – Sticker werden gerade zugeordnet.";
     continentList.appendChild(li);
     return;
   }
 
-  sortedContinents.forEach((item, index) => {
-    const [continent, findings] = item;
-    const firstFinder = findings[0].finder;
-    const count = findings.length;
-    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🌍';
-
-    const li = document.createElement('li');
+  sorted.forEach(([continent, findings], index) => {
+    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "🌍";
+    const countries = new Set(findings.map((l) => l.countryCode)).size;
+    const li = document.createElement("li");
     li.innerHTML = `
       <span class="medal">${medal}</span>
-      <span class="leaderboard-author">${continent} (${count} Sticker)</span>
-      <span class="count">Zuerst: ${firstFinder}</span>
+      <span class="leaderboard-author">${VSC.CONTINENT_NAMES[continent] ?? continent} (${findings.length} Sticker)</span>
+      <span class="count">${countries} ${countries === 1 ? "Land" : "Länder"}</span>
     `;
     continentList.appendChild(li);
   });
 }
 
+updateCountryAlbum();
 updateContinentsLeaderboard();
 
 // Toggle animation

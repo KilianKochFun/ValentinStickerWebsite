@@ -1,6 +1,7 @@
 // Sticker-Upload: Bild in Storage, Row in Tabelle stickers.
 import { supabase } from "./supabase-client.js";
 import { STORAGE_BUCKET } from "./config.js";
+import { CONTINENT_BY_COUNTRY } from "./countries.js";
 
 const ALLOWED_IMAGE = ["image/jpeg", "image/png", "image/webp"];
 const ALLOWED_VIDEO = ["video/mp4", "video/webm", "video/quicktime"];
@@ -29,16 +30,25 @@ function sanitizeFilename(name) {
   return base.length > 80 ? base.slice(-80) : base;
 }
 
-export function guessContinent(lat, lng) {
-  if (lat == null || lng == null) return null;
-  if (lat >= -60 && lat <= 13 && lng >= -82 && lng <= -34) return "SA";
-  if (lat >= 13 && lat <= 84 && lng >= -170 && lng <= -52) return "NA";
-  if (lat >= 34 && lat <= 72 && lng >= -25 && lng <= 45) return "EU";
-  if (lat >= -35 && lat <= 38 && lng >= -18 && lng <= 52) return "AF";
-  if (lat >= -10 && lat <= 82 && lng >= 25 && lng <= 180) return "AS";
-  if (lat >= -50 && lat <= 0 && lng >= 110 && lng <= 180) return "OC";
-  if (lat < -60) return "AN";
-  return null;
+// Ermittelt den ISO-Ländercode zu den Koordinaten (OpenStreetMap/Nominatim).
+// Passiert genau einmal pro Sticker beim Upload; das Ergebnis landet in der DB,
+// die Website selbst fragt später keinen Geocoder mehr.
+//
+// Schlägt die Abfrage fehl, bleibt country_code leer — der Sticker wird trotzdem
+// gespeichert und kann per scripts/backfill-countries.js nachgetragen werden.
+export async function lookupCountryCode(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const url = "https://nominatim.openstreetmap.org/reverse?" + new URLSearchParams({
+    format: "jsonv2", lat, lon: lng, zoom: 3, addressdetails: 1,
+  });
+  try {
+    const res = await fetch(url, { headers: { "Accept-Language": "de" } });
+    if (!res.ok) return null;
+    const cc = (await res.json())?.address?.country_code;
+    return cc ? cc.toUpperCase() : null;
+  } catch {
+    return null;
+  }
 }
 
 // Lädt ein Bild in den eigenen Storage-Ordner und gibt den neuen Pfad zurück.
@@ -78,6 +88,10 @@ export async function uploadSticker({ file, title, description, latitude, longit
 
   const path = await uploadImage(file);
 
+  // Land bestimmen, falls der Aufrufer keins mitgibt. Ein Fehlschlag darf den
+  // Upload nicht blockieren – dann bleibt das Feld eben leer.
+  const cc = country_code || (await lookupCountryCode(latitude, longitude));
+
   const row = {
     uploader_id: user.id,
     is_legacy: false,
@@ -87,8 +101,8 @@ export async function uploadSticker({ file, title, description, latitude, longit
     description: description || null,
     latitude: Number.isFinite(latitude) ? latitude : null,
     longitude: Number.isFinite(longitude) ? longitude : null,
-    country_code: country_code || null,
-    continent: continent || guessContinent(latitude, longitude),
+    country_code: cc || null,
+    continent: continent || (cc ? CONTINENT_BY_COUNTRY[cc] ?? null : null),
     found_at: found_at || new Date().toISOString(),
   };
 
