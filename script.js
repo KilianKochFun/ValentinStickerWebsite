@@ -210,7 +210,10 @@ function buildGalleryCard(index) {
   ${cardMedia}
   <p class="image-title">${loc.title}</p>
   <p class="finder-info">Gefunden von <strong>${loc.finder}</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
-  ${loc.commentCount > 0 ? `<span class="comment-count-badge">💬 ${loc.commentCount}</span>` : ""}
+  <div class="card-badges">
+    ${loc.likeCount > 0 ? `<span class="like-count-badge">👍 ${loc.likeCount}</span>` : ""}
+    ${loc.commentCount > 0 ? `<span class="comment-count-badge">💬 ${loc.commentCount}</span>` : ""}
+  </div>
   ${loc.isVideo ? `<span class="video-badge">▶</span>` : ""}
 `;
   imageCard.onclick = () => {
@@ -295,26 +298,44 @@ if (document.readyState === "loading") {
   setTimeout(openDeepLinkSticker, 0);
 }
 
+// Setzt/entfernt ein Badge (👍 bzw. 💬) auf der Galerie-Karte eines Stickers.
+// `atStart` hält die Reihenfolge stabil: Likes links, Kommentare rechts.
+function updateCardBadge(id, cls, emoji, count, atStart) {
+  const idx = locations.findIndex((l) => l.id === id);
+  if (idx < 0) return;
+  const card = gallery.querySelector(`.image-card[data-index="${idx}"]`);
+  if (!card) return;
+  const wrap = card.querySelector(".card-badges");
+  if (!wrap) return;
+  let badge = wrap.querySelector("." + cls);
+  if (count > 0) {
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = cls;
+      if (atStart) wrap.prepend(badge); else wrap.appendChild(badge);
+    }
+    badge.textContent = `${emoji} ${count}`;
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
 // Kommentar-Zähler live aktualisieren, wenn im Modal kommentiert/gelöscht wird.
 document.addEventListener("comment:changed", (e) => {
   const { id, count } = e.detail || {};
   const loc = locations.find((l) => l.id === id);
   if (!loc) return;
   loc.commentCount = count;
-  const idx = locations.indexOf(loc);
-  const card = gallery.querySelector(`.image-card[data-index="${idx}"]`);
-  if (!card) return;
-  let badge = card.querySelector(".comment-count-badge");
-  if (count > 0) {
-    if (!badge) {
-      badge = document.createElement("span");
-      badge.className = "comment-count-badge";
-      card.appendChild(badge);
-    }
-    badge.textContent = `💬 ${count}`;
-  } else if (badge) {
-    badge.remove();
-  }
+  updateCardBadge(id, "comment-count-badge", "💬", count, false);
+});
+
+// Like-Zähler live aktualisieren, wenn im Modal geliked/entliked wird.
+document.addEventListener("like:changed", (e) => {
+  const { id, count } = e.detail || {};
+  const loc = locations.find((l) => l.id === id);
+  if (!loc) return;
+  loc.likeCount = count;
+  updateCardBadge(id, "like-count-badge", "👍", count, true);
 });
 
 // Fügt Entfernung im Modal hinzu (openFullscreen)

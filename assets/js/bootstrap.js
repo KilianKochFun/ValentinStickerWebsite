@@ -40,10 +40,13 @@
     const { data, error } = await sb
       .from("stickers")
       .select(
-        "id, uploader_id, legacy_finder_name, image_path, is_legacy, title, description, latitude, longitude, found_at, profiles:uploader_id(display_name), comments(count)"
+        "id, uploader_id, legacy_finder_name, image_path, is_legacy, title, description, latitude, longitude, found_at, profiles:uploader_id(display_name), comments(count), sticker_likes(count)"
       )
       .eq("is_hidden", false)
-      .order("found_at", { ascending: true });
+      // Neueste zuerst: die Galerie blättert in dieser Reihenfolge, der zuletzt
+      // hochgeladene Sticker steht damit auf Seite 1 ganz vorne.
+      .order("found_at", { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) throw error;
     if (!Array.isArray(data)) throw new Error("Keine Daten");
@@ -62,6 +65,7 @@
       title: row.title || "",
       description: row.description || "",
       commentCount: row.comments?.[0]?.count ?? 0,
+      likeCount: row.sticker_likes?.[0]?.count ?? 0,
     }));
   }
 

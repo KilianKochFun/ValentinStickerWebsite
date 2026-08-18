@@ -42,6 +42,9 @@ async function render(id) {
   const { count, liked } = await loadLike(id);
   if (id !== currentId) return;
 
+  // Galerie-Karten-Zähler aktuell halten (script.js hört darauf).
+  document.dispatchEvent(new CustomEvent("like:changed", { detail: { id, count } }));
+
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "like-btn" + (liked ? " liked" : "");
