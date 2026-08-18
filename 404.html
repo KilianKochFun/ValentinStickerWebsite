@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Seite nicht gefunden – Valentinsticker.de</title>
+    <link rel="icon" href="img/valentinSticker.webp" type="image/webp" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // Geteilte Sticker-Links zeigen auf /s/<id>.html. Diese Seiten werden von
+      // scripts/build-share-pages.js erzeugt – ein frisch hochgeladener Sticker
+      // hat also noch keine. Damit so ein Link trotzdem funktioniert, holen wir
+      // die ID aus dem Pfad und leiten auf die Karte weiter. Die reiche
+      // Link-Vorschau fehlt dann, der Sticker öffnet sich aber korrekt.
+      (() => {
+        const m = /^\/s\/([0-9a-f-]{36})(?:\.html)?$/i.exec(window.location.pathname);
+        if (m) window.location.replace("/?sticker=" + m[1]);
+      })();
+    </script>
+  </head>
+  <body class="page-sticky-footer">
+    <header class="banner">
+      <div class="banner-content">
+        <a href="/index"><img src="img/valentinSticker.webp" alt="Valentinsticker Logo" /></a>
+        <h1>Seite nicht gefunden</h1>
+      </div>
+    </header>
+
+    <main class="auth-container">
+      <div class="auth-form" style="text-align:center;">
+        <p style="font-size:3rem;margin:0;">🔍</p>
+        <p>Diese Seite gibt es nicht (mehr).</p>
+        <p><a href="/index">Zurück zur Sticker-Karte</a></p>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <a href="/impressum">Impressum</a> |
+      <a href="/datenschutz">Datenschutz</a>
+    </footer>
+  </body>
+</html>
