@@ -30,6 +30,8 @@ const ANON_KEY = process.env.SUPABASE_ANON_KEY || "sb_publishable_RgW1PAzg2JZ5Yk
 const BUCKET = "stickers";
 const SITE = "https://www.valentinsticker.de";
 const FALLBACK_IMAGE = `${SITE}/img/valentinSticker.webp`;
+// Alle Sticker liegen damit unter 300 KB (größter: 263 KB).
+const PREVIEW_PARAMS = "?width=1200&height=1200&resize=contain&quality=75";
 
 const DRY = process.argv.includes("--dry-run");
 
@@ -52,8 +54,17 @@ function page(sticker) {
   const media = image_path
     ? `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${image_path}`
     : FALLBACK_IMAGE;
+  // Fürs Vorschaubild die verkleinerte Fassung nehmen: WhatsApp zeigt keine
+  // Vorschau mehr, wenn das Bild grob über 600 KB liegt – die Originale hier
+  // gehen bis ~5 MB. `contain` erhält das Seitenverhältnis (nur `width` allein
+  // lässt der Transformer die Höhe stehen und verzerrt das Bild).
+  const preview = image_path
+    ? `${SUPABASE_URL}/storage/v1/render/image/public/${BUCKET}/${image_path}${PREVIEW_PARAMS}`
+    : FALLBACK_IMAGE;
   // Videos taugen nicht als og:image – dann zeigt die Vorschau das Logo.
-  const image = isVideo(image_path) ? FALLBACK_IMAGE : media;
+  // In Attributen muss & als &amp; stehen – die Vorschau-URL hat Query-Parameter.
+  const image = escapeHtml(isVideo(image_path) ? FALLBACK_IMAGE : preview);
+  const mediaAttr = escapeHtml(media);
   const target = `${SITE}/?sticker=${id}`;
 
   return `<!DOCTYPE html>
@@ -75,13 +86,17 @@ function page(sticker) {
     <meta name="twitter:title" content="${safeTitle}" />
     <meta name="twitter:description" content="${desc}" />
     <meta name="twitter:image" content="${image}" />
-${isVideo(image_path) ? `    <meta property="og:video" content="${media}" />\n` : ""}
-    <!-- Menschen sofort weiterleiten; Crawler lesen nur die Tags oben. -->
-    <meta http-equiv="refresh" content="0; url=${target}" />
+${isVideo(image_path) ? `    <meta property="og:video" content="${mediaAttr}" />\n` : ""}
+    <!-- Weiterleitung bewusst NUR per JavaScript, ohne meta-refresh: Crawler
+         führen kein JS aus und bleiben deshalb garantiert auf dieser Seite und
+         ihren og:-Tags. Einer Meta-Refresh-Weiterleitung würden viele folgen und läsen dann die
+         generischen Tags von index.html. -->
     <script>window.location.replace(${JSON.stringify(target)});</script>
+    <link rel="stylesheet" href="${SITE}/style.css" />
   </head>
-  <body>
-    <p>Weiterleitung zu <a href="${target}">${safeTitle}</a>…</p>
+  <body style="text-align:center;padding:40px 20px;font-family:Arial,sans-serif;">
+    <img src="${SITE}/img/valentinSticker.webp" alt="" width="80" height="80" />
+    <p>Weiter zu <a href="${target}">${safeTitle}</a> …</p>
   </body>
 </html>
 `;
