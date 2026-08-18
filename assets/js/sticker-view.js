@@ -1,6 +1,7 @@
 // Gemeinsame Formatter und Haversine-Distanz.
 // Die eigentliche URL-Auflösung bleibt in supabase-client.imageUrlFor.
 import { imageUrlFor } from "./supabase-client.js";
+import { flagEmoji, countryName } from "./countries.js";
 
 export function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({
@@ -51,10 +52,14 @@ export function stickerCardHtml(s, { showMeta = true, clickable = false } = {}) 
   const url = imageUrlFor({ image_path: s.image_path });
   const title = escapeHtml(s.title || "(ohne Titel)");
   const description = escapeHtml(s.description || "");
+  // Flagge nur, wenn der Sticker schon einen Ländercode hat.
+  const flag = s.country_code ? `${flagEmoji(s.country_code)} ` : "";
+  const metaText = `${flag}${s.latitude?.toFixed?.(4) ?? "?"}, ${s.longitude?.toFixed?.(4) ?? "?"}`
+    + ` – ${fmtDate(s.found_at)}${s.is_legacy ? " – Legacy" : ""}`;
   const meta = showMeta ? `
     <h4>${title}${s.is_hidden ? '<span class="hidden-badge">versteckt</span>' : ""}</h4>
     <p>${description}</p>
-    <small>${s.latitude?.toFixed?.(4) ?? "?"}, ${s.longitude?.toFixed?.(4) ?? "?"} – ${fmtDate(s.found_at)}${s.is_legacy ? " – Legacy" : ""}</small>
+    <small>${metaText}</small>
   ` : "";
   if (clickable) {
     return `
@@ -63,7 +68,7 @@ export function stickerCardHtml(s, { showMeta = true, clickable = false } = {}) 
         data-sticker-title="${title}"
         data-sticker-description="${description}"
         data-sticker-video="${isVideoPath(url) ? "1" : ""}"
-        data-sticker-meta="${s.latitude?.toFixed?.(4) ?? "?"}, ${s.longitude?.toFixed?.(4) ?? "?"} – ${fmtDate(s.found_at)}${s.is_legacy ? " – Legacy" : ""}">
+        data-sticker-meta="${s.country_code ? `${flagEmoji(s.country_code)} ${countryName(s.country_code)} – ` : ""}${s.latitude?.toFixed?.(4) ?? "?"}, ${s.longitude?.toFixed?.(4) ?? "?"} – ${fmtDate(s.found_at)}${s.is_legacy ? " – Legacy" : ""}">
         ${mediaTagHtml(url)}
         ${meta}
       </button>

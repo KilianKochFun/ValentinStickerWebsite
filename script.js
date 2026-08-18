@@ -56,6 +56,10 @@ uniqueAuthors.forEach((author) => {
   authorSelect.appendChild(option);
 });
 
+// Länder-Helfer (Flagge, Name, Kontinent). Wird von bootstrap.js geladen,
+// bevor dieses Script eingehängt wird; fehlt es, bleiben Länderangaben einfach weg.
+const VSC = window.VS_COUNTRIES;
+
 // DOM Elements
 const gallery = document.getElementById("gallery");
 const searchInput = document.getElementById("searchInput");
@@ -113,9 +117,12 @@ locations.forEach((loc, index) => {
 `;
   const dist = calculateDistance(loc.position, AACHEN_CENTER);
   const distText = `${dist.toFixed(2)} km`;
+  const countryHtml = loc.countryCode && VSC
+    ? `<br>Land: <strong>${VSC.flagEmoji(loc.countryCode)} ${VSC.countryName(loc.countryCode)}</strong>`
+    : "";
   popupDiv.innerHTML += `
   <p style="text-align: left; font-size: 0.9em; color: #555;">
-    Entfernung zur Aachener Mitte: <strong>${distText}</strong>
+    Entfernung zur Aachener Mitte: <strong>${distText}</strong>${countryHtml}
   </p>
 `;
 
@@ -365,8 +372,13 @@ function openFullscreen(loc) {
   const dist = calculateDistance(loc.position, AACHEN_CENTER);
   const distText = `${dist.toFixed(2)} km`;
 
+  // Land mit Flagge, sofern der Sticker schon geocodiert ist.
+  const countryLine = loc.countryCode && VSC
+    ? `<br>Land: <strong>${VSC.flagEmoji(loc.countryCode)} ${VSC.countryName(loc.countryCode)}</strong>`
+    : "";
+
   modalMeta.innerHTML = `Gefunden von <strong>${loc.finder}</strong> am ${new Date(loc.time).toLocaleDateString("de-DE")}<br>
-  Entfernung zur Aachener Mitte: <strong>${distText}</strong>`;
+  Entfernung zur Aachener Mitte: <strong>${distText}</strong>${countryLine}`;
 
   // Kommentare für diesen Sticker laden (assets/js/comments.js hört auf dieses Event).
   document.dispatchEvent(new CustomEvent("sticker:open", { detail: { id: loc.id, title: loc.title } }));
@@ -905,7 +917,6 @@ if (savedCursorEffect) {
 // geocodiert, siehe scripts/backfill-countries.js). Der Kontinent wird aus dem
 // Ländercode abgeleitet statt aus Koordinaten geraten — die alte Bounding-Box-
 // Heuristik hat z. B. Tunis nach Europa und Tel Aviv nach Afrika sortiert.
-const VSC = window.VS_COUNTRIES;
 
 // Gruppiert die Sticker nach Ländercode: { DE: [loc, loc, …], … }
 function groupByCountry() {
