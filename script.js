@@ -45,6 +45,10 @@ centerZoomBtn.onclick = () => {
 centerPopup.appendChild(centerZoomBtn);
 centerMarker.bindPopup(centerPopup);
 
+// Länder-Helfer (Flagge, Name, Kontinent). Wird von bootstrap.js geladen,
+// bevor dieses Script eingehängt wird; fehlt es, bleiben Länderangaben einfach weg.
+const VSC = window.VS_COUNTRIES;
+
 // Get unique authors from 'locations'
 const uniqueAuthors = new Set(locations.map((loc) => loc.finder || "Unknown"));
 // Insert as <option>
@@ -56,9 +60,19 @@ uniqueAuthors.forEach((author) => {
   authorSelect.appendChild(option);
 });
 
-// Länder-Helfer (Flagge, Name, Kontinent). Wird von bootstrap.js geladen,
-// bevor dieses Script eingehängt wird; fehlt es, bleiben Länderangaben einfach weg.
-const VSC = window.VS_COUNTRIES;
+// Länder-Dropdown: nur Länder, in denen es auch wirklich Sticker gibt,
+// alphabetisch nach deutschem Namen.
+const countrySelect = document.getElementById("countrySelect");
+if (countrySelect && VSC) {
+  [...new Set(locations.map((loc) => loc.countryCode).filter(Boolean))]
+    .sort((a, b) => VSC.countryName(a).localeCompare(VSC.countryName(b), "de"))
+    .forEach((cc) => {
+      const option = document.createElement("option");
+      option.value = cc;
+      option.textContent = `${VSC.flagEmoji(cc)} ${VSC.countryName(cc)}`;
+      countrySelect.appendChild(option);
+    });
+}
 
 // DOM Elements
 const gallery = document.getElementById("gallery");
@@ -343,6 +357,7 @@ document.addEventListener("like:changed", (e) => {
   if (!loc) return;
   loc.likeCount = count;
   updateCardBadge(id, "like-count-badge", "👍", count, true);
+  updateLikesLeaderboard();
 });
 
 // Fügt Entfernung im Modal hinzu (openFullscreen)
@@ -419,7 +434,11 @@ if (commentsJumpBtn) {
 if (shareStickerBtn) {
   shareStickerBtn.addEventListener("click", async () => {
     if (!currentModalLoc?.id) return;
-    const url = location.origin + location.pathname + "?sticker=" + currentModalLoc.id;
+    // /s/<id>.html statt ?sticker=<id>: nur diese Seiten tragen eigene og:-Tags,
+    // sodass WhatsApp & Co. den echten Sticker in der Vorschau zeigen
+    // (erzeugt von scripts/build-share-pages.js). Existiert die Seite noch
+    // nicht, fängt 404.html den Link ab und leitet auf die Karte weiter.
+    const url = `${location.origin}/s/${currentModalLoc.id}.html`;
     try {
       await navigator.clipboard.writeText(url);
       const prev = shareStickerBtn.textContent;
@@ -510,13 +529,15 @@ function fuzzyMatch(input, target) {
 
 function filterGallery() {
   const filterText = searchInput.value.trim();
-  const selectedAuthor = authorSelect.value; // "" means all
+  const selectedAuthor = authorSelect.value;   // "" heißt: alle
+  const selectedCountry = countrySelect?.value ?? "";
 
   galleryFilteredIndices = locations
     .map((loc, i) => {
       const matchesTitle = fuzzyMatch(filterText, loc.title);
       const matchesAuthor = !selectedAuthor || loc.finder === selectedAuthor;
-      return matchesTitle && matchesAuthor ? i : -1;
+      const matchesCountry = !selectedCountry || loc.countryCode === selectedCountry;
+      return matchesTitle && matchesAuthor && matchesCountry ? i : -1;
     })
     .filter((i) => i >= 0);
 
@@ -527,6 +548,7 @@ function filterGallery() {
 // Suchfunktion
 searchInput.addEventListener("input", filterGallery);
 authorSelect.addEventListener("change", filterGallery);
+if (countrySelect) countrySelect.addEventListener("change", filterGallery);
 
 // 2) Build the leaderboard from the 'locations' array
 const leaderboardData = {};
@@ -997,6 +1019,39 @@ function updateContinentsLeaderboard() {
   });
 }
 
+// BELIEBTESTE STICKER (nach Likes)
+// Die Like-Zahlen kommen schon mit dem Startseiten-Fetch mit, das kostet also
+// keine zusätzliche Abfrage. Klick auf einen Eintrag öffnet den Sticker.
+function updateLikesLeaderboard() {
+  const box  = document.getElementById("likesLeaderboard");
+  const list = document.getElementById("likesLeaderboardList");
+  if (!box || !list) return;
+
+  const top = locations
+    .filter((loc) => (loc.likeCount ?? 0) > 0)
+    .sort((a, b) => b.likeCount - a.likeCount)
+    .slice(0, 5);
+
+  // Solange niemand geliked hat, wäre die Box nur eine leere Überschrift.
+  if (top.length === 0) { box.hidden = true; return; }
+  box.hidden = false;
+
+  list.innerHTML = "";
+  top.forEach((loc, index) => {
+    const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "👍";
+    const li = document.createElement("li");
+    li.className = "likes-entry";
+    li.innerHTML = `
+      <span class="medal">${medal}</span>
+      <span class="leaderboard-author">${loc.title || "(ohne Titel)"} <em>(von ${loc.finder})</em></span>
+      <span class="count">${loc.likeCount} ${loc.likeCount === 1 ? "Like" : "Likes"}</span>
+    `;
+    li.onclick = () => openFullscreen(loc);
+    list.appendChild(li);
+  });
+}
+
+updateLikesLeaderboard();
 updateCountryAlbum();
 updateContinentsLeaderboard();
 

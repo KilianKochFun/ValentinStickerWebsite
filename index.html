@@ -113,6 +113,11 @@
               <option value="">Alle Finder</option>
               <!-- Options will be dynamically generated if you prefer -->
             </select>
+
+            <select id="countrySelect">
+              <option value="">Alle Länder</option>
+              <!-- wird aus den geladenen Stickern befüllt -->
+            </select>
           </div>
 
           <!-- Blätter-Leiste (außerhalb der scrollenden Galerie-Box) -->
@@ -128,13 +133,19 @@
 
     <!-- Leaderboard für Top 3 größte Entfernungen -->
     <div id="distanceLeaderboard" class="leaderboard-container">
-      <h2>📏 Entfernungs-Ranglistes</h2>
+      <h2>📏 Entfernungs-Rangliste</h2>
       <ul id="distanceLeaderboardList"></ul>
     </div>
     <!-- Leaderboard für Sticker-Finder -->
     <div id="leaderboard" class="leaderboard-container">
       <h2>🏆 Sticker-Rangliste</h2>
       <ul id="leaderboardList"></ul>
+    </div>
+
+    <!-- Beliebteste Sticker nach Likes -->
+    <div id="likesLeaderboard" class="leaderboard-container">
+      <h2>👍 Beliebteste Sticker</h2>
+      <ul id="likesLeaderboardList"></ul>
     </div>
 
     <!-- Länder-Album: alle Länder, in denen die Community schon Sticker hat -->
