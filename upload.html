@@ -29,6 +29,7 @@
         </label>
         <img id="uploadPreview" class="upload-preview" alt="" hidden />
         <video id="uploadVideoPreview" class="upload-preview" controls playsinline hidden></video>
+        <p id="exifHint" class="exif-hint" hidden></p>
 
         <label>
           Titel
@@ -83,6 +84,7 @@
       import { logout } from "./assets/js/auth.js";
       import { uploadSticker, isVideoFile, videoDuration } from "./assets/js/upload.js";
       import { createMapPicker } from "./assets/js/map-picker.js";
+      import { readImageExif } from "./assets/js/exif.js";
 
       if (!(await currentUser())) {
         window.location.href = "login";
@@ -102,11 +104,13 @@
       const videoPreview = document.getElementById("uploadVideoPreview");
       const overlay = document.getElementById("uploadOverlay");
       const submitBtn = form.querySelector('button[type="submit"]');
+      const exifHint = document.getElementById("exifHint");
 
       let previewUrl = null;
       fileInput.addEventListener("change", async () => {
         if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
         err.hidden = true;
+        exifHint.hidden = true;
         preview.hidden = true; preview.removeAttribute("src");
         videoPreview.hidden = true; videoPreview.removeAttribute("src");
         const f = fileInput.files?.[0];
@@ -126,8 +130,36 @@
         } else {
           preview.src = previewUrl;
           preview.hidden = false;
+          await applyExif(f);
         }
       });
+
+      // Ort und Aufnahmezeit aus dem Foto übernehmen, sofern vorhanden.
+      // Beides bleibt danach ganz normal von Hand änderbar.
+      async function applyExif(file) {
+        const { latitude, longitude, takenAt } = await readImageExif(file);
+        const filled = [];
+
+        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+          picker.setPoint(latitude, longitude, { fly: true });
+          filled.push("Ort");
+        }
+        if (takenAt) {
+          const local = new Date(takenAt);
+          local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
+          form.found_at.value = local.toISOString().slice(0, 16);
+          filled.push("Aufnahmezeit");
+        }
+
+        if (filled.length) {
+          exifHint.textContent = `📍 ${filled.join(" und ")} aus dem Foto übernommen – unten bei Bedarf korrigieren.`;
+          exifHint.hidden = false;
+        } else {
+          exifHint.textContent = "Das Foto enthält keine Ortsdaten – bitte den Fundort auf der Karte setzen. "
+            + "(Über WhatsApp verschickte Bilder verlieren diese Angaben.)";
+          exifHint.hidden = false;
+        }
+      }
 
       // Default auf jetzt
       const now = new Date();
