@@ -37,7 +37,7 @@ function fmtDate(iso) {
 async function loadComments(stickerId) {
   const { data, error } = await supabase
     .from("comments")
-    .select("id, body, created_at, author_id, profiles:author_id(display_name)")
+    .select("id, body, created_at, author_id, guest_name, profiles:author_id(display_name)")
     .eq("sticker_id", stickerId)
     .eq("is_hidden", false)
     .order("created_at", { ascending: true });
@@ -45,13 +45,24 @@ async function loadComments(stickerId) {
   return data ?? [];
 }
 
+// Zuletzt benutzter Gast-Name, damit man ihn nicht jedes Mal neu tippen muss.
+const GUEST_NAME_KEY = "guestCommentName";
+function savedGuestName() {
+  try { return localStorage.getItem(GUEST_NAME_KEY) || ""; } catch (_) { return ""; }
+}
+
 function commentItemHtml(c) {
-  const name = c.profiles?.display_name || "Anonym";
+  // Gäste bekommen den Zusatz "(Gast)", damit sich niemand als registrierter Nutzer ausgibt.
+  const name = c.profiles?.display_name
+    ? escapeHtml(c.profiles.display_name)
+    : c.guest_name
+      ? `${escapeHtml(c.guest_name)} <span class="comment-guest">(Gast)</span>`
+      : "Anonym";
   const canDelete = me && (c.author_id === me.id || myProfile?.is_admin);
   return `
     <li class="comment-item">
       <div class="comment-head">
-        <span class="comment-author">${escapeHtml(name)}</span>
+        <span class="comment-author">${name}</span>
         <span class="comment-date">${fmtDate(c.created_at)}</span>
         ${canDelete ? `<button type="button" class="comment-delete" data-id="${c.id}" title="Kommentar löschen" aria-label="Kommentar löschen">🗑️</button>` : ""}
       </div>
@@ -90,7 +101,14 @@ async function render(stickerId) {
         <button type="submit">Absenden</button>
         <p class="comment-error" hidden></p>
       </form>`
-    : `<p class="comments-login"><a href="login">Einloggen</a>, um zu kommentieren.</p>`;
+    : `
+      <form class="comment-form">
+        <input type="text" name="guest_name" maxlength="40" required placeholder="Dein Name" value="${escapeHtml(savedGuestName())}" />
+        <textarea name="body" rows="2" maxlength="1000" required placeholder="Kommentar schreiben…"></textarea>
+        <p class="comments-login">Ohne Account – dein Name wird öffentlich angezeigt. Oder <a href="login">einloggen</a>.</p>
+        <button type="submit">Absenden</button>
+        <p class="comment-error" hidden></p>
+      </form>`;
 
   box.innerHTML = `
     <h3 class="comments-title">💬 Kommentare (${comments.length})</h3>
@@ -110,13 +128,13 @@ async function render(stickerId) {
       errEl.hidden = true;
       const body = form.body.value.trim();
       if (!body) return;
+      const guestName = me ? null : form.guest_name.value.trim();
+      if (!me && !guestName) return;
       const submitBtn = form.querySelector("button");
       submitBtn.disabled = true;
-      const { error } = await supabase.from("comments").insert({
-        sticker_id: stickerId,
-        author_id: me.id,
-        body,
-      });
+      const { error } = await supabase.from("comments").insert(me
+        ? { sticker_id: stickerId, author_id: me.id, body }
+        : { sticker_id: stickerId, author_id: null, guest_name: guestName, body });
       submitBtn.disabled = false;
       if (error) {
         errEl.textContent = "Konnte nicht gesendet werden: " + error.message;
@@ -124,6 +142,7 @@ async function render(stickerId) {
         return;
       }
       form.body.value = "";
+      if (guestName) { try { localStorage.setItem(GUEST_NAME_KEY, guestName); } catch (_) {} }
       if (stickerId === currentStickerId) render(stickerId);
     });
   }

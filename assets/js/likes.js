@@ -15,6 +15,30 @@ function ensureAuth() {
   return authReady;
 }
 
+// Gäste (ohne Login): zufälliges Geheimnis pro Browser. In der DB liegt nur
+// dessen SHA-256 (guest_hash), Setzen/Entfernen läuft über die RPC guest_like_set.
+let guestSecret = null;
+let guestHash = null;
+
+function getGuestSecret() {
+  if (guestSecret) return guestSecret;
+  const key = "guestLikeSecret";
+  try { guestSecret = localStorage.getItem(key); } catch (_) {}
+  if (!guestSecret) {
+    guestSecret = crypto.randomUUID() + crypto.randomUUID();
+    try { localStorage.setItem(key, guestSecret); } catch (_) {}
+  }
+  return guestSecret;
+}
+
+async function getGuestHash() {
+  if (!guestHash) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(getGuestSecret()));
+    guestHash = [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  return guestHash;
+}
+
 async function loadLike(id) {
   // Gesamtzahl der Likes (RLS: für alle sichtbar).
   const { count, error } = await supabase
@@ -23,17 +47,13 @@ async function loadLike(id) {
     .eq("sticker_id", id);
   if (error) { console.warn("[likes]", error.message); return { count: 0, liked: false }; }
 
-  let liked = false;
-  if (me) {
-    const { data } = await supabase
-      .from("sticker_likes")
-      .select("sticker_id")
-      .eq("sticker_id", id)
-      .eq("user_id", me.id)
-      .maybeSingle();
-    liked = !!data;
-  }
-  return { count: count ?? 0, liked };
+  const { data } = await supabase
+    .from("sticker_likes")
+    .select("sticker_id")
+    .eq("sticker_id", id)
+    .eq(me ? "user_id" : "guest_hash", me ? me.id : await getGuestHash())
+    .maybeSingle();
+  return { count: count ?? 0, liked: !!data };
 }
 
 async function render(id) {
@@ -49,17 +69,17 @@ async function render(id) {
   btn.type = "button";
   btn.className = "like-btn" + (liked ? " liked" : "");
   btn.innerHTML = `👍 <span class="like-label">Like</span> <span class="like-count">${count}</span>`;
-  btn.title = me ? (liked ? "Gefällt dir nicht mehr" : "Gefällt mir") : "Zum Liken einloggen";
+  btn.title = liked ? "Gefällt dir nicht mehr" : "Gefällt mir";
   btn.addEventListener("click", () => toggle(id, liked));
   box.innerHTML = "";
   box.appendChild(btn);
 }
 
 async function toggle(id, liked) {
-  if (!me) { window.location.href = "login"; return; }
-  const query = liked
-    ? supabase.from("sticker_likes").delete().eq("sticker_id", id).eq("user_id", me.id)
-    : supabase.from("sticker_likes").insert({ sticker_id: id, user_id: me.id });
+  let query;
+  if (!me) query = supabase.rpc("guest_like_set", { p_sticker_id: id, p_secret: getGuestSecret(), p_like: !liked });
+  else if (liked) query = supabase.from("sticker_likes").delete().eq("sticker_id", id).eq("user_id", me.id);
+  else query = supabase.from("sticker_likes").insert({ sticker_id: id, user_id: me.id });
   const { error } = await query;
   if (error) { alert("Aktion fehlgeschlagen: " + error.message); return; }
   if (id === currentId) render(id);

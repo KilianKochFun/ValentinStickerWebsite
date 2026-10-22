@@ -673,11 +673,21 @@ body {
   color: #666;
   margin: 0 0 12px;
 }
+.comment-form .comments-login {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.comment-guest {
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: #888;
+}
 .comment-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+.comment-form input,
 .comment-form textarea {
   width: 100%;
   box-sizing: border-box;
