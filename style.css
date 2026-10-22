@@ -815,6 +815,9 @@ body {
   border-radius: 12px;
   white-space: nowrap;
 }
+.like-count-badge.mine {
+  background: var(--color-primary);
+}
 
 /* FOOTER */
 .footer {

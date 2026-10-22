@@ -20,6 +20,11 @@ function ensureAuth() {
 let guestSecret = null;
 let guestHash = null;
 
+function hasGuestSecret() {
+  if (guestSecret) return true;
+  try { return !!localStorage.getItem("guestLikeSecret"); } catch (_) { return false; }
+}
+
 function getGuestSecret() {
   if (guestSecret) return guestSecret;
   const key = "guestLikeSecret";
@@ -39,6 +44,44 @@ async function getGuestHash() {
   return guestHash;
 }
 
+// Eigene Likes zusätzlich im localStorage merken (Liste der Sticker-IDs): Der
+// Like-Status steht beim Öffnen sofort da, und die Galerie markiert eigene Likes
+// (script.js liest denselben Key). Die DB bleibt maßgeblich und gleicht die Liste ab.
+const LIKED_KEY = "likedStickers";
+
+function readLiked() {
+  try { return new Set(JSON.parse(localStorage.getItem(LIKED_KEY) || "[]")); } catch (_) { return new Set(); }
+}
+
+function writeLiked(set) {
+  try {
+    if (set.size) localStorage.setItem(LIKED_KEY, JSON.stringify([...set]));
+    else localStorage.removeItem(LIKED_KEY);
+  } catch (_) {}
+  document.dispatchEvent(new CustomEvent("likes:mine"));
+}
+
+function rememberLike(id, liked) {
+  const set = readLiked();
+  if (liked === set.has(id)) return;
+  if (liked) set.add(id); else set.delete(id);
+  writeLiked(set);
+}
+
+// Beim Laden einmal alle eigenen Likes aus der DB holen und die Liste abgleichen.
+// Gäste ohne Kennung haben noch nie geliked – dann nichts anlegen.
+async function syncMyLikes() {
+  await ensureAuth();
+  if (!me && !hasGuestSecret()) { writeLiked(new Set()); return; }
+  const { data, error } = await supabase
+    .from("sticker_likes")
+    .select("sticker_id")
+    .eq(me ? "user_id" : "guest_hash", me ? me.id : await getGuestHash());
+  if (error) { console.warn("[likes]", error.message); return; }
+  writeLiked(new Set(data.map((r) => r.sticker_id)));
+}
+syncMyLikes();
+
 async function loadLike(id) {
   // Gesamtzahl der Likes (RLS: für alle sichtbar).
   const { count, error } = await supabase
@@ -47,6 +90,7 @@ async function loadLike(id) {
     .eq("sticker_id", id);
   if (error) { console.warn("[likes]", error.message); return { count: 0, liked: false }; }
 
+  if (!me && !hasGuestSecret()) return { count: count ?? 0, liked: false };
   const { data } = await supabase
     .from("sticker_likes")
     .select("sticker_id")
@@ -57,9 +101,12 @@ async function loadLike(id) {
 }
 
 async function render(id) {
-  box.innerHTML = `<button class="like-btn" type="button" disabled>👍 …</button>`;
+  // Sofort den lokal gemerkten Status zeigen, bis die DB geantwortet hat.
+  const cached = readLiked().has(id);
+  box.innerHTML = `<button class="like-btn${cached ? " liked" : ""}" type="button" disabled>👍 …</button>`;
   await ensureAuth();
   const { count, liked } = await loadLike(id);
+  rememberLike(id, liked);
   if (id !== currentId) return;
 
   // Galerie-Karten-Zähler aktuell halten (script.js hört darauf).
@@ -82,6 +129,7 @@ async function toggle(id, liked) {
   else query = supabase.from("sticker_likes").insert({ sticker_id: id, user_id: me.id });
   const { error } = await query;
   if (error) { alert("Aktion fehlgeschlagen: " + error.message); return; }
+  rememberLike(id, !liked);
   if (id === currentId) render(id);
 }
 

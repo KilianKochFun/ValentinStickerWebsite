@@ -232,7 +232,7 @@ function buildGalleryCard(index) {
   <p class="image-title">${loc.title}</p>
   <p class="finder-info">Gefunden von <strong>${loc.finder}</strong> am ${loc.time.toLocaleDateString("de-DE")}</p>
   <div class="card-badges">
-    ${loc.likeCount > 0 ? `<span class="like-count-badge">👍 ${loc.likeCount}</span>` : ""}
+    ${loc.likeCount > 0 ? `<span class="like-count-badge${myLikedIds().has(loc.id) ? " mine" : ""}">👍 ${loc.likeCount}</span>` : ""}
     ${loc.commentCount > 0 ? `<span class="comment-count-badge">💬 ${loc.commentCount}</span>` : ""}
   </div>
   ${loc.isVideo ? `<span class="video-badge">▶</span>` : ""}
@@ -357,8 +357,23 @@ document.addEventListener("like:changed", (e) => {
   if (!loc) return;
   loc.likeCount = count;
   updateCardBadge(id, "like-count-badge", "👍", count, true);
+  markMyLikes();
   updateLikesLeaderboard();
 });
+
+// Eigene Likes (von likes.js im localStorage gepflegt) auf den Karten markieren.
+function myLikedIds() {
+  try { return new Set(JSON.parse(localStorage.getItem("likedStickers") || "[]")); } catch (_) { return new Set(); }
+}
+
+function markMyLikes() {
+  const mine = myLikedIds();
+  gallery.querySelectorAll(".image-card").forEach((card) => {
+    const loc = locations[card.dataset.index];
+    card.querySelector(".like-count-badge")?.classList.toggle("mine", !!loc && mine.has(loc.id));
+  });
+}
+document.addEventListener("likes:mine", markMyLikes);
 
 // Fügt Entfernung im Modal hinzu (openFullscreen)
 function openFullscreen(loc) {
