@@ -218,10 +218,13 @@
     <!-- Auth-Nav: zeigt Login/Upload/Account je nach Session -->
     <script type="module">
       import { currentUser, currentProfile } from "./assets/js/supabase-client.js";
+      import { openUploadUntil } from "./assets/js/upload.js";
       const user = await currentUser();
       const ids = user
         ? ["authUploadBtn", "authAccountBtn", "authUploadBtnMobile", "authAccountBtnMobile"]
         : ["authLoginBtn", "authLoginBtnMobile"];
+      // Offener Upload-Zeitraum: Upload-Button auch ohne Login zeigen.
+      if (!user && (await openUploadUntil())) ids.push("authUploadBtn", "authUploadBtnMobile");
       ids.forEach((id) => { const el = document.getElementById(id); if (el) el.hidden = false; });
       if (user) {
         const profile = await currentProfile();

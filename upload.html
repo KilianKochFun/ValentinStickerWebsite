@@ -22,6 +22,12 @@
 
     <main class="auth-container">
       <form id="uploadForm" class="auth-form" enctype="multipart/form-data">
+        <p id="openUploadHint" class="auth-hint" hidden></p>
+        <label id="finderNameLabel" hidden>
+          Dein Name <small>(wird beim Sticker als Finder angezeigt)</small>
+          <input type="text" name="finder_name" maxlength="40" />
+        </label>
+
         <label>
           Foto oder Video
           <small>(Bild: JPEG/PNG/WebP, max. 5 MB · Video: MP4/WebM/MOV, max. 15 MB &amp; 30 s)</small>
@@ -82,12 +88,24 @@
     <script type="module">
       import { currentUser } from "./assets/js/supabase-client.js";
       import { logout } from "./assets/js/auth.js";
-      import { uploadSticker, isVideoFile, videoDuration } from "./assets/js/upload.js";
+      import { uploadSticker, isVideoFile, videoDuration, openUploadUntil } from "./assets/js/upload.js";
       import { createMapPicker } from "./assets/js/map-picker.js";
       import { readImageExif } from "./assets/js/exif.js";
 
-      if (!(await currentUser())) {
-        window.location.href = "login";
+      // Ohne Login nur während eines offenen Upload-Zeitraums – dann mit Namensfeld.
+      const user = await currentUser();
+      if (!user) {
+        const until = await openUploadUntil();
+        if (!until) {
+          window.location.href = "login";
+        } else {
+          document.getElementById("logoutBtn").hidden = true;
+          const hint = document.getElementById("openUploadHint");
+          hint.textContent = `🎉 Offener Upload bis ${until.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })} – jeder kann ohne Account Sticker hochladen.`;
+          hint.hidden = false;
+          document.getElementById("finderNameLabel").hidden = false;
+          document.querySelector('input[name="finder_name"]').required = true;
+        }
       }
 
       document.getElementById("logoutBtn").addEventListener("click", async () => {
@@ -214,9 +232,12 @@
             latitude: parseFloat(data.get("latitude")),
             longitude: parseFloat(data.get("longitude")),
             found_at: new Date(data.get("found_at")).toISOString(),
+            finder_name: data.get("finder_name"),
           });
           ok.hidden = false;
+          const finderName = form.finder_name.value;
           form.reset();
+          form.finder_name.value = finderName;
           picker.clear();
           if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
           preview.hidden = true; preview.removeAttribute("src");

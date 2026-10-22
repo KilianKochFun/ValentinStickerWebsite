@@ -51,12 +51,20 @@ export async function lookupCountryCode(lat, lng) {
   }
 }
 
+// Ist gerade ein offener Upload-Zeitraum aktiv? Gibt das Enddatum zurück oder null.
+export async function openUploadUntil() {
+  const { data } = await supabase.from("upload_settings").select("open_until").eq("id", 1).maybeSingle();
+  const until = data?.open_until ? new Date(data.open_until) : null;
+  return until && until > new Date() ? until : null;
+}
+
 // Lädt ein Bild in den eigenen Storage-Ordner und gibt den neuen Pfad zurück.
-// Validiert MIME und Größe. Nutzt die Konvention "{user.id}/{timestamp}-{filename}".
+// Validiert MIME und Größe. Nutzt die Konvention "{user.id}/{timestamp}-{filename}",
+// ohne Login (offener Upload) "anon/{timestamp}-{filename}".
 export async function uploadImage(file) {
   const { data: u } = await supabase.auth.getUser();
   const user = u.user;
-  if (!user) throw new Error("Nicht eingeloggt.");
+  if (!user && !(await openUploadUntil())) throw new Error("Nicht eingeloggt.");
 
   const isImage = ALLOWED_IMAGE.includes(file.type);
   const isVideo = ALLOWED_VIDEO.includes(file.type);
@@ -72,7 +80,7 @@ export async function uploadImage(file) {
     }
   }
 
-  const path = `${user.id}/${Date.now()}-${sanitizeFilename(file.name)}`;
+  const path = `${user ? user.id : "anon"}/${Date.now()}-${sanitizeFilename(file.name)}`;
   const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
     contentType: file.type,
     upsert: false,
@@ -81,10 +89,11 @@ export async function uploadImage(file) {
   return path;
 }
 
-export async function uploadSticker({ file, title, description, latitude, longitude, found_at, continent, country_code }) {
+export async function uploadSticker({ file, title, description, latitude, longitude, found_at, continent, country_code, finder_name }) {
   const { data: u } = await supabase.auth.getUser();
   const user = u.user;
-  if (!user) throw new Error("Nicht eingeloggt.");
+  const name = (finder_name || "").trim();
+  if (!user && !name) throw new Error("Bitte deinen Namen angeben.");
 
   const path = await uploadImage(file);
 
@@ -93,9 +102,9 @@ export async function uploadSticker({ file, title, description, latitude, longit
   const cc = country_code || (await lookupCountryCode(latitude, longitude));
 
   const row = {
-    uploader_id: user.id,
+    uploader_id: user ? user.id : null,
     is_legacy: false,
-    legacy_finder_name: null,
+    legacy_finder_name: user ? null : name.slice(0, 40),
     image_path: path,
     title: title || null,
     description: description || null,

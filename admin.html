@@ -76,6 +76,27 @@
       </section>
 
       <section class="admin-section">
+        <h2>Offener Upload</h2>
+        <p class="auth-hint">
+          Status: <strong id="openUploadStatus">…</strong>.
+          Solange der offene Upload läuft, kann jeder ohne Account Sticker hochladen
+          (mit Namensangabe). Danach geht es automatisch wieder nur mit Login.
+        </p>
+        <form id="openUploadForm" class="auth-form">
+          <label>
+            Offen bis
+            <input type="datetime-local" name="open_until" required />
+          </label>
+          <div class="form-row">
+            <button type="submit">🔓 Öffnen / verlängern</button>
+            <button type="button" id="closeUploadBtn" class="secondary-btn danger-btn">🔒 Jetzt schließen</button>
+          </div>
+          <p id="openUploadOk" class="auth-ok" hidden></p>
+          <p id="openUploadError" class="auth-error" hidden></p>
+        </form>
+      </section>
+
+      <section class="admin-section">
         <h2>Quiz-Runden</h2>
         <p class="auth-hint">
           Aktuelle Runde: <strong id="currentRoundDisplay">…</strong>.
@@ -182,7 +203,7 @@
         const { data: legacyRows } = await supabase
           .from("stickers")
           .select("legacy_finder_name")
-          .eq("is_legacy", true)
+          .is("uploader_id", null)
           .not("legacy_finder_name", "is", null);
         const names = [...new Set((legacyRows ?? []).map((r) => r.legacy_finder_name))].sort();
         document.getElementById("legacyNameSelect").innerHTML =
@@ -336,7 +357,56 @@
         });
       }
 
+      // ---------- Offener Upload ----------
+      function toLocalInput(d) {
+        const local = new Date(d);
+        local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
+        return local.toISOString().slice(0, 16);
+      }
+
+      async function refreshOpenUpload() {
+        const { data } = await supabase.from("upload_settings").select("open_until").eq("id", 1).maybeSingle();
+        const until = data?.open_until ? new Date(data.open_until) : null;
+        const open = until && until > new Date();
+        document.getElementById("openUploadStatus").textContent = open
+          ? `offen bis ${until.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })}`
+          : "geschlossen";
+        // Vorschlag: bestehendes Ende oder in 7 Tagen
+        document.querySelector('#openUploadForm input[name="open_until"]').value =
+          toLocalInput(open ? until : Date.now() + 7 * 24 * 3600 * 1000);
+      }
+
+      async function setOpenUntil(value, msg) {
+        const ok = document.getElementById("openUploadOk");
+        const err = document.getElementById("openUploadError");
+        ok.hidden = true; err.hidden = true;
+        const { error } = await supabase.from("upload_settings").update({ open_until: value }).eq("id", 1);
+        if (error) { err.textContent = error.message; err.hidden = false; return; }
+        ok.textContent = msg;
+        ok.hidden = false;
+        refreshOpenUpload();
+      }
+
+      function initOpenUpload() {
+        refreshOpenUpload();
+        document.getElementById("openUploadForm").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const until = new Date(new FormData(e.target).get("open_until"));
+          if (!(until > new Date())) {
+            const err = document.getElementById("openUploadError");
+            err.textContent = "Das Ende muss in der Zukunft liegen.";
+            err.hidden = false;
+            return;
+          }
+          setOpenUntil(until.toISOString(), "Offener Upload aktiviert. 🎉");
+        });
+        document.getElementById("closeUploadBtn").addEventListener("click", () => {
+          setOpenUntil(null, "Offener Upload geschlossen.");
+        });
+      }
+
       function initAdmin() {
+        initOpenUpload();
         refreshOpenCodes();
         refreshLegacyMergeForm();
         refreshUserSelect();
@@ -421,11 +491,12 @@
           const legacy_name = fd.get("legacy_name");
           const user_id = fd.get("user_id");
           // Merge: uploader_id setzen, legacy_finder_name leer räumen.
-          // is_legacy bleibt true, damit image_path weiter auf img/StickerFunde/ zeigt.
+          // is_legacy bleibt unverändert, damit image_path weiter auf img/StickerFunde/ zeigt.
+          // Greift auch für Sticker aus dem offenen Upload (is_legacy=false, ohne Account).
           const { error, count } = await supabase
             .from("stickers")
             .update({ uploader_id: user_id, legacy_finder_name: null }, { count: "exact" })
-            .eq("is_legacy", true)
+            .is("uploader_id", null)
             .eq("legacy_finder_name", legacy_name);
           const ok = document.getElementById("mergeResult");
           const err = document.getElementById("mergeError");
