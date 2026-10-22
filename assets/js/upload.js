@@ -89,11 +89,11 @@ export async function uploadImage(file) {
   return path;
 }
 
-export async function uploadSticker({ file, title, description, latitude, longitude, found_at, continent, country_code, finder_name }) {
+export async function uploadSticker({ file, title, description, latitude, longitude, found_at, continent, country_code, finder_name, email }) {
   const { data: u } = await supabase.auth.getUser();
   const user = u.user;
   const name = (finder_name || "").trim();
-  if (!user && !name) throw new Error("Bitte deinen Namen angeben.");
+  if (!user && (!name || !(email || "").trim())) throw new Error("Bitte Name und E-Mail angeben.");
 
   const path = await uploadImage(file);
 
@@ -101,10 +101,29 @@ export async function uploadSticker({ file, title, description, latitude, longit
   // Upload nicht blockieren – dann bleibt das Feld eben leer.
   const cc = country_code || (await lookupCountryCode(latitude, longitude));
 
+  // Ohne Login (offener Upload): Sticker + E-Mail legt die RPC serverseitig an.
+  // Die Datei bleibt bei einem Fehler liegen – anonyme Nutzer dürfen nicht löschen.
+  if (!user) {
+    const { data: id, error } = await supabase.rpc("submit_open_upload", {
+      p_image_path: path,
+      p_title: title || null,
+      p_description: description || null,
+      p_latitude: Number.isFinite(latitude) ? latitude : null,
+      p_longitude: Number.isFinite(longitude) ? longitude : null,
+      p_country_code: cc || null,
+      p_continent: continent || (cc ? CONTINENT_BY_COUNTRY[cc] ?? null : null),
+      p_found_at: found_at || null,
+      p_finder_name: name,
+      p_email: email.trim(),
+    });
+    if (error) throw new Error(`Speichern fehlgeschlagen: ${error.message}`);
+    return { id };
+  }
+
   const row = {
-    uploader_id: user ? user.id : null,
+    uploader_id: user.id,
     is_legacy: false,
-    legacy_finder_name: user ? null : name.slice(0, 40),
+    legacy_finder_name: null,
     image_path: path,
     title: title || null,
     description: description || null,

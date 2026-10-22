@@ -23,10 +23,16 @@
     <main class="auth-container">
       <form id="uploadForm" class="auth-form" enctype="multipart/form-data">
         <p id="openUploadHint" class="auth-hint" hidden></p>
-        <label id="finderNameLabel" hidden>
-          Dein Name <small>(wird beim Sticker als Finder angezeigt)</small>
-          <input type="text" name="finder_name" maxlength="40" />
-        </label>
+        <div id="guestFields" class="form-row" hidden>
+          <label>
+            Dein Name <small>(wird als Finder angezeigt)</small>
+            <input type="text" name="finder_name" maxlength="40" autocomplete="name" />
+          </label>
+          <label>
+            E-Mail <small>(nicht öffentlich, nur für Rückfragen)</small>
+            <input type="email" name="email" maxlength="254" autocomplete="email" />
+          </label>
+        </div>
 
         <label>
           Foto oder Video
@@ -74,6 +80,25 @@
       </form>
     </main>
 
+    <!-- Bestätigung vor dem Upload ohne Account (Rechte, Datenschutz, Inhalte) -->
+    <div id="confirmModal" class="notice-modal" hidden role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+      <div class="notice-modal-box">
+        <div class="notice-modal-emoji">🛡️</div>
+        <h2 id="confirmModalTitle">Kurz bevor's losgeht …</h2>
+        <p>Dein Sticker ist danach öffentlich auf der Website zu sehen. Bitte bestätige:</p>
+        <div class="check-list">
+          <label><input type="checkbox" required /> <span>Das Foto/Video habe ich selbst gemacht oder darf es verwenden.</span></label>
+          <label><input type="checkbox" required /> <span>Darauf sind keine Personen, Gesichter, Autokennzeichen oder andere private Details erkennbar.</span></label>
+          <label><input type="checkbox" required /> <span>Der Inhalt ist nicht beleidigend, anstößig oder rechtswidrig.</span></label>
+          <label><input type="checkbox" required /> <span>Ich bin einverstanden, dass Foto, Titel, Fundort und mein Name öffentlich angezeigt werden. Meine E-Mail wird nur für Rückfragen gespeichert (<a href="datenschutz" target="_blank">Datenschutz</a>).</span></label>
+        </div>
+        <div class="notice-modal-actions">
+          <button type="button" class="secondary-btn" id="confirmCancelBtn">Zurück</button>
+          <button type="button" class="primary-btn" id="confirmOkBtn" disabled>✅ Ja, hochladen</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Lade-Overlay: klar sichtbar, damit niemand doppelt hochlädt -->
     <div id="uploadOverlay" class="upload-overlay" hidden>
       <div class="upload-overlay-box">
@@ -103,8 +128,9 @@
           const hint = document.getElementById("openUploadHint");
           hint.textContent = `🎉 Offener Upload bis ${until.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })} – jeder kann ohne Account Sticker hochladen.`;
           hint.hidden = false;
-          document.getElementById("finderNameLabel").hidden = false;
+          document.getElementById("guestFields").hidden = false;
           document.querySelector('input[name="finder_name"]').required = true;
+          document.querySelector('input[name="email"]').required = true;
         }
       }
 
@@ -216,9 +242,30 @@
         );
       });
 
-      form.addEventListener("submit", async (e) => {
+      // Bestätigungsfenster (nur ohne Login): "Ja, hochladen" erst, wenn alles angehakt ist.
+      const confirmModal = document.getElementById("confirmModal");
+      const confirmOkBtn = document.getElementById("confirmOkBtn");
+      const confirmChecks = [...confirmModal.querySelectorAll('input[type="checkbox"]')];
+      confirmChecks.forEach((c) => c.addEventListener("change", () => {
+        confirmOkBtn.disabled = !confirmChecks.every((x) => x.checked);
+      }));
+      document.getElementById("confirmCancelBtn").addEventListener("click", () => { confirmModal.hidden = true; });
+      confirmOkBtn.addEventListener("click", () => {
+        confirmModal.hidden = true;
+        doUpload();
+      });
+
+      form.addEventListener("submit", (e) => {
         e.preventDefault();
         if (submitBtn.disabled) return; // Doppel-Submit verhindern
+        if (user) return doUpload();
+        confirmChecks.forEach((c) => { c.checked = false; });
+        confirmOkBtn.disabled = true;
+        confirmModal.hidden = false;
+      });
+
+      async function doUpload() {
+        if (submitBtn.disabled) return;
         err.hidden = true; ok.hidden = true;
         const data = new FormData(form);
         // Klar sichtbares Lade-Overlay + Button sperren, damit nicht mehrfach geschickt wird.
@@ -233,11 +280,14 @@
             longitude: parseFloat(data.get("longitude")),
             found_at: new Date(data.get("found_at")).toISOString(),
             finder_name: data.get("finder_name"),
+            email: data.get("email"),
           });
           ok.hidden = false;
           const finderName = form.finder_name.value;
+          const email = form.email.value;
           form.reset();
           form.finder_name.value = finderName;
+          form.email.value = email;
           picker.clear();
           if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
           preview.hidden = true; preview.removeAttribute("src");
@@ -250,7 +300,7 @@
           overlay.hidden = true;
           submitBtn.disabled = false;
         }
-      });
+      }
     </script>
   </body>
 </html>

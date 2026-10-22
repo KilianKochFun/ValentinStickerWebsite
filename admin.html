@@ -79,17 +79,24 @@
         <h2>Offener Upload</h2>
         <p class="auth-hint">
           Status: <strong id="openUploadStatus">…</strong>.
-          Solange der offene Upload läuft, kann jeder ohne Account Sticker hochladen
-          (mit Namensangabe). Danach geht es automatisch wieder nur mit Login.
+          Solange der offene Upload an ist, kann jeder ohne Account Sticker hochladen
+          (mit Name und E-Mail) und auf der Startseite erscheint ein Hinweis-Fenster.
+          Nach Ablauf geht es automatisch wieder nur mit Login.
         </p>
         <form id="openUploadForm" class="auth-form">
+          <label>Schnell einschalten für</label>
+          <div class="open-upload-days">
+            <button type="button" class="secondary-btn" data-days="1">1 Tag</button>
+            <button type="button" class="secondary-btn" data-days="3">3 Tage</button>
+            <button type="button" class="secondary-btn" data-days="7">1 Woche</button>
+          </div>
           <label>
-            Offen bis
+            … oder an bis
             <input type="datetime-local" name="open_until" required />
           </label>
           <div class="form-row">
-            <button type="submit">🔓 Öffnen / verlängern</button>
-            <button type="button" id="closeUploadBtn" class="secondary-btn danger-btn">🔒 Jetzt schließen</button>
+            <button type="submit">🔓 Einschalten</button>
+            <button type="button" id="closeUploadBtn" class="secondary-btn danger-btn">🔒 Ausschalten</button>
           </div>
           <p id="openUploadOk" class="auth-ok" hidden></p>
           <p id="openUploadError" class="auth-error" hidden></p>
@@ -233,7 +240,9 @@
           .select("id, title, description, image_path, is_hidden, is_legacy, uploader_id, legacy_finder_name, found_at, profiles:uploader_id(display_name)")
           .order("found_at", { ascending: false });
         if (error) { console.error(error); return []; }
-        return data ?? [];
+        const { data: contacts } = await supabase.from("open_upload_contacts").select("sticker_id, email");
+        const emailBySticker = new Map((contacts ?? []).map((c) => [c.sticker_id, c.email]));
+        return (data ?? []).map((r) => ({ ...r, guest_email: emailBySticker.get(r.id) ?? null }));
       }
 
       function filterAdminStickers() {
@@ -272,7 +281,7 @@
             <div class="admin-sticker-info">
               <strong>${escapeHtml(r.title || "(ohne Titel)")}</strong>
               ${r.is_hidden ? '<span class="hidden-badge">versteckt</span>' : ""}${r.is_legacy ? '<span class="hidden-badge">Legacy</span>' : ""}
-              <small>von ${escapeHtml(stickerFinderName(r))}</small>
+              <small>von ${escapeHtml(stickerFinderName(r))}${r.guest_email ? ` · Gast-Upload, ✉️ <a href="mailto:${escapeHtml(r.guest_email)}">${escapeHtml(r.guest_email)}</a>` : ""}</small>
             </div>
             <div class="admin-sticker-actions">
               <button type="button" data-action="toggle" class="secondary-btn">${r.is_hidden ? "👁️ Einblenden" : "🙈 Verstecken"}</button>
@@ -369,8 +378,8 @@
         const until = data?.open_until ? new Date(data.open_until) : null;
         const open = until && until > new Date();
         document.getElementById("openUploadStatus").textContent = open
-          ? `offen bis ${until.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })}`
-          : "geschlossen";
+          ? `🟢 an bis ${until.toLocaleString("de-DE", { dateStyle: "medium", timeStyle: "short" })} Uhr`
+          : "🔴 aus";
         // Vorschlag: bestehendes Ende oder in 7 Tagen
         document.querySelector('#openUploadForm input[name="open_until"]').value =
           toLocalInput(open ? until : Date.now() + 7 * 24 * 3600 * 1000);
@@ -398,10 +407,14 @@
             err.hidden = false;
             return;
           }
-          setOpenUntil(until.toISOString(), "Offener Upload aktiviert. 🎉");
+          setOpenUntil(until.toISOString(), "Offener Upload eingeschaltet. 🎉");
         });
+        document.querySelectorAll("#openUploadForm [data-days]").forEach((b) => b.addEventListener("click", () => {
+          const until = new Date(Date.now() + Number(b.dataset.days) * 24 * 3600 * 1000);
+          setOpenUntil(until.toISOString(), `Offener Upload für ${b.textContent} eingeschaltet. 🎉`);
+        }));
         document.getElementById("closeUploadBtn").addEventListener("click", () => {
-          setOpenUntil(null, "Offener Upload geschlossen.");
+          setOpenUntil(null, "Offener Upload ausgeschaltet.");
         });
       }
 
